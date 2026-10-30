@@ -1,0 +1,164 @@
+[
+  {
+    "id": 6358,
+    "name": "Mandir Marg, New Delhi - DPCC",
+    "lat": 28.636429,
+    "lon": 77.201067,
+    "sensors": {
+      "no2": 12234775,
+      "o3": 12234776,
+      "pm10": 12234777,
+      "pm25": 12234778
+    },
+    "units": {
+      "no2": "ppb",
+      "o3": "µg/m³",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 2.62,
+    "datetime_last": "2026-10-30T16:15:00Z"
+  },
+  {
+    "id": 8118,
+    "name": "New Delhi",
+    "lat": 28.63576,
+    "lon": 77.22445,
+    "sensors": {
+      "pm25": 23534
+    },
+    "units": {
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 2.86,
+    "datetime_last": "2026-10-30T17:30:00Z"
+  },
+  {
+    "id": 11607,
+    "name": "Lodhi Road, Delhi - IITM",
+    "lat": 28.588333,
+    "lon": 77.221667,
+    "sensors": {
+      "no2": 12236374,
+      "o3": 39438,
+      "pm10": 39434,
+      "pm25": 12236376
+    },
+    "units": {
+      "no2": "ppb",
+      "o3": "µg/m³",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 3.1,
+    "datetime_last": "2026-10-30T16:15:00Z"
+  },
+  {
+    "id": 5613,
+    "name": "ITO, New Delhi - CPCB",
+    "lat": 28.628624,
+    "lon": 77.24106,
+    "sensors": {
+      "no2": 12234750,
+      "o3": 17785,
+      "pm10": 14869,
+      "pm25": 12234753
+    },
+    "units": {
+      "no2": "ppb",
+      "o3": "µg/m³",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 3.53,
+    "datetime_last": "2026-10-30T16:00:00Z"
+  },
+  {
+    "id": 6356,
+    "name": "Pusa, Delhi - DPCC",
+    "lat": 28.639645,
+    "lon": 77.146262,
+    "sensors": {
+      "no2": 12235318,
+      "o3": 12235319,
+      "pm10": 12235320,
+      "pm25": 12235321
+    },
+    "units": {
+      "no2": "ppb",
+      "o3": "µg/m³",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 6.76,
+    "datetime_last": "2026-10-30T16:30:00Z"
+  },
+  {
+    "id": 5610,
+    "name": "North Campus, DU, Delhi - IMD",
+    "lat": 28.6573814,
+    "lon": 77.1585447,
+    "sensors": {
+      "no2": 12234687,
+      "o3": 2007703,
+      "pm10": 12234689,
+      "pm25": 12234690
+    },
+    "units": {
+      "no2": "ppb",
+      "o3": "ppm",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 6.9,
+    "datetime_last": "2026-10-30T16:00:00Z"
+  },
+  {
+    "id": 5586,
+    "name": "Sirifort, Delhi - CPCB",
+    "lat": 28.5504249,
+    "lon": 77.2159377,
+    "sensors": {
+      "no2": 12234766,
+      "o3": 12234767,
+      "pm10": 12234768,
+      "pm25": 12234769
+    },
+    "units": {
+      "no2": "ppb",
+      "o3": "µg/m³",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 7.09,
+    "datetime_last": "2026-10-30T16:30:00Z"
+  },
+  {
+    "id": 5630,
+    "name": "Shadipur, Delhi - CPCB",
+    "lat": 28.6514781,
+    "lon": 77.1473105,
+    "sensors": {
+      "no2": 15053,
+      "o3": 15011,
+      "pm10": 36210,
+      "pm25": 12234726
+    },
+    "units": {
+      "no2": "µg/m³",
+      "o3": "µg/m³",
+      "pm10": "µg/m³",
+      "pm25": "µg/m³"
+    },
+    "is_monitor": true,
+    "distance_km": 7.33,
+    "datetime_last": "2026-10-30T16:30:00Z"
+  }
+]

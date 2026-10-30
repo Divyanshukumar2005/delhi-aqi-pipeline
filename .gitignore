@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# NOTE: data/aqi.db and data/stations.json are intentionally NOT ignored -
+# they are committed so the dashboard and the workflow can use them.
