@@ -37,7 +37,8 @@ export function MethodTab() {
           <ul className="list-disc space-y-2.5 pl-5 text-[14px] leading-relaxed subtle">
             <li>Only PM2.5 and PM10 feed the AQI here. NO2, O3, CO, SO2 and NH3 sub-indices are not included.</li>
             <li>Some monitors are missing from the station list, so their map positions are approximate.</li>
-            <li>The forecast is a statistical baseline without weather inputs.</li>
+            <li>When monitors stop reporting for hours or days, charts draw a dashed interpolated line across the stretch. Heatmaps leave out days with no coverage. Nothing in the tables or statistics is interpolated.</li>
+            <li>The 24-hour forecast uses past readings only (no weather inputs). Its accuracy against a “stays the same” baseline is shown on the Forecast tab.</li>
             <li>The history covers about two weeks, which is short for seasonal conclusions.</li>
           </ul>
         </Section>

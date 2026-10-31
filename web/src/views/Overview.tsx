@@ -56,8 +56,7 @@ export function Overview({ m, onArea }: { m: Model; onArea: (a: AreaFilter) => v
       </div>
 
       <Section title="The last two weeks" hint="Hourly city-wide AQI. Shaded bands mark the CPCB categories, from Good at the bottom to Severe at the top.">
-        <CityTrend data={m.gapped} gaps={m.gaps} height={280} />
-        {m.gaps.length > 0 && <p className="mt-3 text-xs muted">Grey bands are windows when fewer than five monitors reported, so no city average is shown.</p>}
+        <CityTrend data={m.ticks} height={280} />
       </Section>
     </div>
   );

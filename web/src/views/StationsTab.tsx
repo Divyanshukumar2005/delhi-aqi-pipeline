@@ -19,17 +19,7 @@ export function StationsTab({ m, all, ids, setIds }: { m: Model; all: Station[];
       row[s.id] = r.aqi;
       byT.set(r.t, row);
     }
-    const sorted = [...byT.values()].sort((a, b) => (a.t as number) - (b.t as number));
-    // break the lines wherever the selected stations all went quiet for more than 3 hours
-    const out: Record<string, number | null>[] = [];
-    sorted.forEach((row, i) => {
-      const prev = sorted[i - 1];
-      if (prev && (row.t as number) - (prev.t as number) > 3 * 3600000) {
-        out.push({ t: (prev.t as number) + 3600000, ...Object.fromEntries(chosen.map((s) => [s.id, null])) });
-      }
-      out.push(row);
-    });
-    return out;
+    return [...byT.values()].sort((a, b) => (a.t as number) - (b.t as number));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids, all]);
 

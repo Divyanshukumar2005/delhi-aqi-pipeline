@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { HeatGrid, type HeatRow } from '../components/HeatGrid';
 import { DiurnalChart } from '../components/charts';
 import { Section } from '../components/ui';
 import { CATEGORIES } from '../lib/aqi';
-import { dateHourGrid, stationHourGrid } from '../lib/data';
+import { dateHourGrid, stationHourGrid, type HeatMetric } from '../lib/data';
 import { fmtDay, fmtHour, fmtWeekday } from '../lib/time';
 import type { Model } from '../lib/model';
 
@@ -20,24 +20,54 @@ function Scale() {
   );
 }
 
+const METRICS: { id: HeatMetric; label: string; unit: string; desc: string }[] = [
+  { id: 'pm25', label: 'PM2.5 (hourly)', unit: 'µg/m³', desc: 'Raw hourly PM2.5, coloured by the CPCB category it falls in. This shows the real daily cycle.' },
+  { id: 'aqi', label: 'AQI (24 h rolling)', unit: 'AQI', desc: 'The published 24-hour rolling AQI. It is smoothed over a day, so it moves slowly from hour to hour.' },
+];
+
+const fmtList = (days: string[]) => {
+  if (!days.length) return '';
+  const ranges: string[] = [];
+  let start = days[0], prev = days[0];
+  const next = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  const push = () => ranges.push(start === prev ? fmtDay(start) : `${fmtDay(start)} to ${fmtDay(prev)}`);
+  for (const d of days.slice(1)) { if (d === next(prev)) { prev = d; } else { push(); start = d; prev = d; } }
+  push();
+  return ranges.join(', ');
+};
+
 export function HeatmapTab({ m }: { m: Model }) {
+  const [metric, setMetric] = useState<HeatMetric>('pm25');
+  const info = METRICS.find((x) => x.id === metric)!;
+  const grid = useMemo(() => dateHourGrid(m.stations, metric), [m.stations, metric]);
   const cityRows = useMemo<HeatRow[]>(
-    () => dateHourGrid(m.stations).reverse().map((r) => ({ key: r.date, label: fmtDay(r.date), sub: fmtWeekday(r.date), cells: r.cells })),
-    [m.stations],
+    () => [...grid.rows].reverse().map((r) => ({ key: r.date, label: fmtDay(r.date), sub: fmtWeekday(r.date), cells: r.cells })),
+    [grid],
   );
   const stationRows = useMemo<HeatRow[]>(
-    () => stationHourGrid(m.stations).map((r) => ({ key: r.station.id, label: r.station.short, sub: r.station.area, cells: r.cells })),
-    [m.stations],
+    () => stationHourGrid(m.stations, metric).map((r) => ({ key: r.station.id, label: r.station.short, sub: r.station.area, cells: r.cells })),
+    [m.stations, metric],
   );
+  const val = (v: number | null) => (v === null ? 'no data' : metric === 'pm25' ? `${v} µg/m³` : `AQI ${v}`);
 
   return (
     <div className="space-y-5">
-      <Section title="City AQI by day and hour" hint="Each cell averages the stations reporting in that hour (IST). Blank cells had fewer than five stations. Newest day first." right={<Scale />}>
-        <HeatGrid rows={cityRows} rowHeader="Date" readout={(r, h, v) => `${r.label} (${r.sub}), ${fmtHour(h)} IST: ${v === null ? 'no data' : `AQI ${v}`}`} />
+      <div className="card flex flex-wrap items-center justify-between gap-3 p-4 sm:px-6">
+        <p className="max-w-[62ch] text-[13px] subtle">{info.desc}</p>
+        <div className="flex gap-1.5" role="group" aria-label="Heatmap measure">
+          {METRICS.map((x) => (
+            <button key={x.id} className="chip" aria-pressed={metric === x.id} onClick={() => setMetric(x.id)}>{x.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <Section title="City by day and hour" hint="Each cell averages the stations reporting in that hour (IST), shown in the unit chosen above. Newest day first." right={<Scale />}>
+        <HeatGrid rows={cityRows} rowHeader="Date" metric={metric} readout={(r, h, v) => `${r.label} (${r.sub}), ${fmtHour(h)} IST: ${val(v)}`} />
+        {grid.skipped.length > 0 && <p className="mt-3 text-xs muted">No monitor coverage on {fmtList(grid.skipped)}, so those days are not shown.</p>}
       </Section>
 
-      <Section title="Which stations are worst, and when" hint="Mean AQI by hour of day over the whole period, one row per station, most polluted at the top." right={<Scale />}>
-        <HeatGrid rows={stationRows} rowHeader="Station" readout={(r, h, v) => `${r.label}, ${fmtHour(h)} IST: ${v === null ? 'no data' : `mean AQI ${v}`}`} />
+      <Section title="Which stations are worst, and when" hint="Mean value by hour of day over the whole period, one row per station, most polluted at the top." right={<Scale />}>
+        <HeatGrid rows={stationRows} rowHeader="Station" metric={metric} readout={(r, h, v) => `${r.label}, ${fmtHour(h)} IST: ${v === null ? 'no data' : `mean ${val(v)}`}`} />
       </Section>
 
       <div className="grid gap-5 lg:grid-cols-2">

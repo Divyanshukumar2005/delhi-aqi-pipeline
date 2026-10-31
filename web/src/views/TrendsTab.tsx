@@ -8,13 +8,13 @@ import type { Model } from '../lib/model';
 export function TrendsTab({ m }: { m: Model }) {
   const [p, setP] = useState<Pollutant>('pm25');
   const info = POLLUTANTS[p];
-  const series = useMemo(() => m.gapped.map((t) => ({ t: t.t, v: t[p] })), [m.gapped, p]);
+  const series = useMemo(() => m.ticks.map((t) => ({ t: t.t, v: t[p] })), [m.ticks, p]);
   const daily = [...m.daily].filter((d) => d.hours >= 6).reverse();
 
   return (
     <div className="space-y-5">
       <Section title="City AQI over time" hint="Hourly average across stations, computed from the rolling 24-hour PM2.5 and PM10 means.">
-        <CityTrend data={m.gapped} gaps={m.gaps} />
+        <CityTrend data={m.ticks} />
       </Section>
 
       <Section
@@ -28,7 +28,7 @@ export function TrendsTab({ m }: { m: Model }) {
           </div>
         }
       >
-        <PollutantChart data={series} gaps={m.gaps} k={p} label={`${info.label} (µg/m³)`} limit={info.limit} />
+        <PollutantChart data={series} k={p} label={`${info.label} (µg/m³)`} limit={info.limit} />
       </Section>
 
       <Section title="Day by day" hint="Daily average of the hourly city AQI. Days with under 6 hours of city-wide data are left out; the latest day is still in progress.">

@@ -243,40 +243,67 @@ export function diurnal(stations: Station[]) {
   return sums.map((x, hour) => ({ hour, pm25: x.n ? Math.round((x.s / x.n) * 10) / 10 : (null as number | null) }));
 }
 
-/** date x hour grid of city-mean AQI */
-export function dateHourGrid(stations: Station[]) {
+export type HeatMetric = 'pm25' | 'aqi';
+
+/**
+ * Value behind one heatmap cell. Hourly PM2.5 keeps the real daily cycle; the 24 h rolling AQI is
+ * smoothed over a whole day, so every hour of a day would look almost the same.
+ */
+const cellValue = (r: Reading, metric: HeatMetric) => (metric === 'pm25' ? r.pm25 : r.aqi);
+
+/** date x hour grid of city-mean values. Days with (almost) no coverage are dropped and reported back. */
+export function dateHourGrid(stations: Station[], metric: HeatMetric = 'pm25') {
   const cell = new Map<string, { s: number; n: number }>();
   const dates = new Set<string>();
+  let lo = Infinity, hi = -Infinity;
   for (const st of stations) for (const r of st.readings) {
-    if (r.aqi === null) continue;
+    lo = Math.min(lo, r.t); hi = Math.max(hi, r.t);
+    const v = cellValue(r, metric);
+    if (v === null) continue;
     dates.add(r.date);
     const k = `${r.date}|${r.hour}`;
     const c = cell.get(k) ?? { s: 0, n: 0 };
-    c.s += r.aqi; c.n++;
+    c.s += v; c.n++;
     cell.set(k, c);
   }
   // a city cell needs several stations behind it, otherwise one sensor would pose as "the city"
   const minN = Math.min(5, Math.max(1, Math.floor(stations.length / 2)));
-  const rows = [...dates].sort().map((date) => ({
+  const all = [...dates].sort().map((date) => ({
     date,
     cells: Array.from({ length: 24 }, (_, h) => {
       const c = cell.get(`${date}|${h}`);
       return c && c.n >= minN ? Math.round(c.s / c.n) : null;
     }),
   }));
-  return rows;
+  const rows = all.filter((r) => r.cells.filter((v) => v !== null).length >= 6);
+  // calendar days inside the period that have no usable row
+  const kept = new Set(rows.map((r) => r.date));
+  const skipped: string[] = [];
+  if (Number.isFinite(lo)) {
+    for (let t = lo; t <= hi + 86400000; t += 86400000) {
+      const d = istDate(t);
+      if (!kept.has(d) && !skipped.includes(d) && d >= rows[0]?.date && d <= rows[rows.length - 1]?.date) skipped.push(d);
+    }
+  }
+  return { rows, skipped };
 }
 
-/** station x hour-of-day grid of mean AQI */
-export function stationHourGrid(stations: Station[]) {
+/** station x hour-of-day grid of mean values */
+export function stationHourGrid(stations: Station[], metric: HeatMetric = 'pm25') {
   return stations
-    .filter((s) => s.readings.some((r) => r.aqi !== null))
     .map((s) => {
       const sums = Array.from({ length: 24 }, () => ({ s: 0, n: 0 }));
-      for (const r of s.readings) if (r.aqi !== null) { sums[r.hour].s += r.aqi; sums[r.hour].n++; }
-      return { station: s, cells: sums.map((x) => (x.n ? Math.round(x.s / x.n) : null)) };
+      let tot = 0, cnt = 0;
+      for (const r of s.readings) {
+        const v = cellValue(r, metric);
+        if (v === null) continue;
+        sums[r.hour].s += v; sums[r.hour].n++;
+        tot += v; cnt++;
+      }
+      return { station: s, mean: cnt ? tot / cnt : -1, cells: sums.map((x) => (x.n ? Math.round(x.s / x.n) : null)) };
     })
-    .sort((a, b) => b.station.mean - a.station.mean);
+    .filter((r) => r.mean >= 0)
+    .sort((a, b) => b.mean - a.mean);
 }
 
 export function categoryShare(stations: Station[]) {

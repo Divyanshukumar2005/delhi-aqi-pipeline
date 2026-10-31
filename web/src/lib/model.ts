@@ -20,17 +20,6 @@ export function buildModel(all: Station[], area: AreaFilter) {
   });
 
   const ticks = cityHourly(stations);
-  // Where the network went quiet (> 3 h without enough stations), break the line and shade the window.
-  const gaps: { from: number; to: number }[] = [];
-  const gapped: { t: number; aqi: number | null; pm25: number | null; pm10: number | null; no2: number | null; o3: number | null }[] = [];
-  ticks.forEach((t, i) => {
-    const prev = ticks[i - 1];
-    if (prev && t.t - prev.t > 3 * 3600000) {
-      gaps.push({ from: prev.t, to: t.t });
-      gapped.push({ t: prev.t + 3600000, aqi: null, pm25: null, pm10: null, no2: null, o3: null });
-    }
-    gapped.push(t);
-  });
   const daily = cityDaily(ticks);
   const dProfile = diurnal(stations);
   const withVal = dProfile.filter((d) => d.pm25 !== null) as { hour: number; pm25: number }[];
@@ -41,7 +30,7 @@ export function buildModel(all: Station[], area: AreaFilter) {
   const pctPoor = share.total ? (share.counts.slice(3).reduce((a, b) => a + b, 0) / share.total) * 100 : 0;
 
   return {
-    stations, reporting, ranked, cityAqi, cat, areaAvg, ticks, gaps, gapped, daily, dProfile, peak, clean, pm25Mean, share, pctPoor,
+    stations, reporting, ranked, cityAqi, cat, areaAvg, ticks, daily, dProfile, peak, clean, pm25Mean, share, pctPoor,
     worst: ranked[0] ?? null,
     cleanest: ranked[ranked.length - 1] ?? null,
   };

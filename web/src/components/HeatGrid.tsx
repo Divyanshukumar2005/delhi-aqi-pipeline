@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { categoryOf } from '../lib/aqi';
+import { categoryOf, subIndex } from '../lib/aqi';
+import type { HeatMetric } from '../lib/data';
 import { CatBadge } from './ui';
 import { fmtHour, pad2 } from '../lib/time';
 
 export interface HeatRow { key: string; label: string; sub?: string; cells: (number | null)[] }
 
 /** 24-column heatmap. Cells are solid CPCB colours with auto-contrast numbers. */
-export function HeatGrid({ rows, rowHeader, readout }: { rows: HeatRow[]; rowHeader: string; readout: (row: HeatRow, hour: number, v: number | null) => string }) {
+export function HeatGrid({ rows, rowHeader, metric, readout }: { rows: HeatRow[]; rowHeader: string; metric: HeatMetric; readout: (row: HeatRow, hour: number, v: number | null) => string }) {
+  /** PM2.5 cells are coloured by the CPCB category their concentration falls in. */
+  const catOf = (v: number) => (metric === 'pm25' ? categoryOf(subIndex(v, 'pm25')) : categoryOf(v));
   const [hover, setHover] = useState<{ row: HeatRow; hour: number; v: number | null } | null>(null);
   return (
     <div>
@@ -14,7 +17,7 @@ export function HeatGrid({ rows, rowHeader, readout }: { rows: HeatRow[]; rowHea
         {hover ? (
           <>
             <span className="subtle">{readout(hover.row, hover.hour, hover.v)}</span>
-            {hover.v !== null && <CatBadge cat={categoryOf(hover.v)} />}
+            {hover.v !== null && <CatBadge cat={catOf(hover.v)} />}
           </>
         ) : (
           <span className="muted">Hover a cell for details</span>
@@ -36,13 +39,13 @@ export function HeatGrid({ rows, rowHeader, readout }: { rows: HeatRow[]; rowHea
                   {row.sub && <span className="ml-1.5 text-xs font-normal muted">{row.sub}</span>}
                 </div>
                 {row.cells.map((v, h) => {
-                  const cat = v === null ? null : categoryOf(v);
+                  const cat = v === null ? null : catOf(v);
                   return (
                     <div
                       key={h}
                       onMouseEnter={() => setHover({ row, hour: h, v })}
                       className="num grid h-7 cursor-default place-items-center rounded-[5px] text-[10.5px] font-medium transition-transform hover:z-10 hover:scale-[1.25]"
-                      style={{ background: cat ? cat.fill : 'var(--surface-2)', color: cat ? cat.on : 'var(--ink-3)', border: cat ? 'none' : '1px dashed var(--line)' }}
+                      style={{ background: cat ? cat.fill : 'var(--surface-2)', color: cat ? cat.on : 'var(--ink-3)', opacity: cat ? 1 : 0.7 }}
                       aria-label={`${row.label} ${fmtHour(h)} ${v ?? 'no data'}`}
                     >
                       {v ?? ''}

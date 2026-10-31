@@ -36,7 +36,7 @@ export function MapTab({ m, theme, onCompare }: { m: Model; theme: 'light' | 'da
           </div>
         }
       >
-        <div className="relative h-[560px] overflow-hidden rounded-xl border" style={{ borderColor: 'var(--line)' }}>
+        <div className="relative h-[560px] overflow-hidden rounded-xl border isolate" style={{ borderColor: 'var(--line)' }}>
           <MapCanvas stations={m.stations} selectedId={selected} onSelect={setSelected} theme={theme} view={view} cityAqi={m.cityAqi} cityCat={m.cat} />
           <div className="pointer-events-none absolute left-3 top-3 z-[500] rounded-xl border p-2.5 text-xs backdrop-blur" style={{ background: 'color-mix(in srgb, var(--surface) 88%, transparent)', borderColor: 'var(--line)' }}>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
@@ -52,7 +52,7 @@ export function MapTab({ m, theme, onCompare }: { m: Model; theme: 'light' | 'da
         {unmapped > 0 && <p className="mt-2 text-xs muted">{unmapped} station{unmapped > 1 ? 's have' : ' has'} no coordinates and appear only in the list.</p>}
       </Section>
 
-      <div className="flex flex-col gap-5 lg:col-span-4 lg:h-0 lg:min-h-full">
+      <div className="flex flex-col gap-5 lg:col-span-4">
         {sel && sel.latest && (
           <section className="card p-5">
             <div className="flex items-start justify-between gap-3">
@@ -79,7 +79,7 @@ export function MapTab({ m, theme, onCompare }: { m: Model; theme: 'light' | 'da
           </section>
         )}
 
-        <section className="card flex min-h-[420px] flex-1 flex-col p-5 lg:min-h-0">
+        <section className="card flex flex-col p-5">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="h-section">Ranking</h3>
             <span className="text-xs muted">Most to least polluted</span>
@@ -88,7 +88,7 @@ export function MapTab({ m, theme, onCompare }: { m: Model; theme: 'light' | 'da
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 muted" />
             <input className="field w-full pl-9" placeholder="Search station or area" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search stations" />
           </label>
-          <ul className="no-scrollbar -mr-1 flex-1 space-y-1.5 overflow-y-auto pr-1">
+          <ul className="no-scrollbar -mr-1 max-h-[440px] space-y-1.5 overflow-y-auto pr-1">
             {list.map((s, i) => {
               const cat = categoryOf(s.latest!.aqi);
               const active = s.id === selected;

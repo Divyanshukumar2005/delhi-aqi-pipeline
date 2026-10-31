@@ -159,7 +159,7 @@ export default function App() {
         {tab === 'heatmap' && <HeatmapTab m={m} />}
         {tab === 'trends' && <TrendsTab m={m} />}
         {tab === 'stations' && <StationsTab m={buildModel(data.stations, 'All')} all={data.stations} ids={compare} setIds={setCompare} />}
-        {tab === 'forecast' && <ForecastTab m={m} lastT={data.maxT} />}
+        {tab === 'forecast' && <ForecastTab m={m} />}
         {tab === 'insights' && <InsightsTab m={m} onCsv={downloadCsv} />}
         {tab === 'method' && <MethodTab />}
       </main>
