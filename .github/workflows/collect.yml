@@ -2,8 +2,9 @@ name: Collect Delhi AQI data
 
 on:
   schedule:
-    # GitHub cron runs in UTC. 02:30 UTC = 08:00 IST (UTC+5:30).
-    - cron: "30 2 * * *"
+    # GitHub cron runs in UTC (IST = UTC+5:30):
+    # 02:30 UTC = 08:00 IST, 08:30 UTC = 14:00 IST, 14:30 UTC = 20:00 IST.
+    - cron: "30 2,8,14 * * *"
   workflow_dispatch:
     inputs:
       backfill:

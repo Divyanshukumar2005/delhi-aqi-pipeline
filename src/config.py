@@ -25,9 +25,11 @@ IST = ZoneInfo("Asia/Kolkata")
 # ---------------------------------------------------------------------------
 OPENAQ_BASE_URL: str = "https://api.openaq.org/v3"
 OPENAQ_KEY_ENV: str = "OPENAQ_API_KEY"   # header name used by the API: X-API-Key
-DELHI_CENTER: tuple[float, float] = (28.6139, 77.2090)  # (lat, lon) - Connaught Place area
+DELHI_CENTER: tuple[float, float] = (28.5400, 77.1300)   # Delhi-NCR centre
 SEARCH_RADIUS_M: int = 25_000            # API maximum for coordinates+radius search (25 km)
-MAX_STATIONS: int = 8
+MAX_STATIONS: int = 30
+# OpenAQ location IDs that must always be tracked (find them with `python src/find_station.py LAT LON`).
+EXTRA_STATION_IDS: list[int] = []
 STATION_FRESHNESS_HOURS: int = 24        # a station must have reported within this window
 MIN_OPENAQ_STATIONS: int = 3             # below this we switch to the Open-Meteo fallback
 OPENAQ_PAGE_LIMIT: int = 1000            # results per page for /hours
@@ -51,6 +53,7 @@ FALLBACK_LOCATIONS: list[dict] = [
     {"station_id": "om-ito", "station": "ITO", "lat": 28.6289, "lon": 77.2410},
     {"station_id": "om-dwarka", "station": "Dwarka", "lat": 28.5921, "lon": 77.0460},
     {"station_id": "om-rohini", "station": "Rohini", "lat": 28.7324, "lon": 77.1176},
+    {"station_id": "om-gurugram", "station": "Gurugram", "lat": 28.4595, "lon": 77.0266},
 ]
 # Maps Open-Meteo variable names to our column names.
 OPENMETEO_VARIABLES: dict[str, str] = {

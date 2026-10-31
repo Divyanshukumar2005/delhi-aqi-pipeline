@@ -109,6 +109,11 @@ class OpenAQClient:
         )
         return data.get("results", [])
 
+    def get_location(self, location_id: int) -> dict | None:
+        """One location by its OpenAQ id (None if it does not exist)."""
+        results = self._get(f"/locations/{location_id}").get("results", [])
+        return results[0] if results else None
+
     def get_latest(self, location_id: int) -> list[dict]:
         """Latest measurement of every sensor at a location."""
         return self._get(f"/locations/{location_id}/latest").get("results", [])

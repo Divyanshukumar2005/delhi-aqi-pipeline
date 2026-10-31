@@ -116,8 +116,30 @@ def discover(client: OpenAQClient, now: datetime | None = None) -> list[dict]:
         if pm25_is_fresh(client, cand, now):
             chosen.append(cand)
             logger.info("Selected %s (%.1f km)", cand["name"], cand["distance_km"])
+    _add_extra_stations(client, chosen, now)
     save_stations(chosen)
     return chosen
+
+
+def _add_extra_stations(client: OpenAQClient, chosen: list[dict], now: datetime) -> None:
+    """Always include the hand-picked config.EXTRA_STATION_IDS (if active and measuring PM2.5)."""
+    have = {c["id"] for c in chosen}
+    for loc_id in getattr(config, "EXTRA_STATION_IDS", []):
+        if loc_id in have:
+            continue
+        try:
+            summary = summarise_location(client.get_location(loc_id) or {})
+        except Exception as exc:
+            logger.warning("Could not load extra station %s: %s", loc_id, exc)
+            continue
+        if summary is None:
+            logger.warning("Extra station %s not found or has no PM2.5 sensor; skipped.", loc_id)
+        elif not pm25_is_fresh(client, summary, now):
+            logger.warning("Extra station %s (%s) has no PM2.5 data in the last %d h; skipped.",
+                           loc_id, summary["name"], config.STATION_FRESHNESS_HOURS)
+        else:
+            chosen.append(summary)
+            logger.info("Added extra station %s (%s)", loc_id, summary["name"])
 
 
 def save_stations(stations: list[dict], path: Path = config.STATIONS_PATH) -> None:

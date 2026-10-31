@@ -220,3 +220,24 @@ def test_rank_candidates_prefers_monitors_and_distance():
                 "sensors": [{"id": i * 10, "parameter": {"name": "pm25", "units": "µg/m³"}}]}
     ranked = discover.rank_candidates([loc(1, 28.70, True), loc(2, 28.62, True), loc(3, 28.6139, False)])
     assert [s["id"] for s in ranked] == [2, 1]   # low-cost sensor dropped, closest first
+
+
+def test_extra_station_ids_are_added_when_fresh(monkeypatch):
+    from datetime import datetime, timezone
+    now = datetime(2026, 10, 31, 6, 0, tzinfo=timezone.utc)
+    loc = {"id": 7, "name": "Sector 7, Gurugram", "coordinates": {"latitude": 28.46, "longitude": 77.03},
+           "sensors": [{"id": 70, "parameter": {"name": "pm25", "units": "µg/m³"}}],
+           "isMonitor": True, "isMobile": False}
+
+    class FakeClient:
+        def find_locations(self):
+            return []
+        def get_location(self, loc_id):
+            return loc if loc_id == 7 else None
+        def get_latest(self, loc_id):
+            return [{"sensorsId": 70, "value": 90, "datetime": {"utc": "2026-10-31T05:00:00Z"}}]
+
+    monkeypatch.setattr(config, "EXTRA_STATION_IDS", [7, 999], raising=False)
+    monkeypatch.setattr(discover, "save_stations", lambda stations, *a, **k: None)
+    chosen = discover.discover(FakeClient(), now=now)
+    assert [s["id"] for s in chosen] == [7]       # 999 does not exist -> skipped, no crash
