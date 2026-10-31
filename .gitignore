@@ -17,3 +17,4 @@ Thumbs.db
 
 # NOTE: data/aqi.db and data/stations.json are intentionally NOT ignored -
 # they are committed so the dashboard and the workflow can use them.
+sample_readings.csv
