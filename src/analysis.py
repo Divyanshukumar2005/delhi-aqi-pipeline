@@ -91,13 +91,20 @@ def with_valid_aqi(df: pd.DataFrame) -> pd.DataFrame:
     return df.dropna(subset=["aqi"]) if "aqi" in df else df.iloc[0:0]
 
 
-def latest_by_station(df: pd.DataFrame) -> pd.DataFrame:
-    """Most recent valid AQI row of each station."""
+def latest_by_station(df: pd.DataFrame, max_age_hours: float | None = 12.0) -> pd.DataFrame:
+    """Most recent valid AQI row of each station.
+
+    Stations whose latest reading is more than `max_age_hours` older than the newest
+    reading in the data (offline, or dropped from stations.json) are left out, so a
+    stale value from days ago is never shown as "right now". Pass None to keep all.
+    """
     valid = with_valid_aqi(df)
     if valid.empty:
         return valid
-    return (valid.sort_values("ts").groupby(["station_id", "source"]).tail(1)
-            .sort_values("aqi", ascending=False).reset_index(drop=True))
+    latest = valid.sort_values("ts").groupby(["station_id", "source"]).tail(1)
+    if max_age_hours is not None:
+        latest = latest[latest["ts"] >= latest["ts"].max() - pd.Timedelta(hours=max_age_hours)]
+    return latest.sort_values("aqi", ascending=False).reset_index(drop=True)
 
 
 def pct_poor_or_worse(df: pd.DataFrame) -> float | None:
@@ -232,3 +239,17 @@ def correlation_matrix(df: pd.DataFrame) -> pd.DataFrame | None:
     if len(sub) < 30:
         return None
     return sub.corr()
+
+
+def station_area(station_name: str) -> str:
+    """Classify a station label into its NCR sub-region."""
+    s = str(station_name).lower()
+    if "gurugram" in s or "gurgaon" in s:
+        return "Gurugram"
+    if "noida" in s:
+        return "Noida"
+    if "faridabad" in s:
+        return "Faridabad"
+    if "bahadurgarh" in s:
+        return "Bahadurgarh"
+    return "Delhi"

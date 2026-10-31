@@ -86,8 +86,15 @@ def load_readings(db_path: Path | str = config.DB_PATH) -> pd.DataFrame:
     if not db_path.exists():
         return empty
     try:
-        with get_connection(db_path) as conn:
+        uri = f"file:{db_path.resolve()}?mode=ro"
+        try:
+            conn = sqlite3.connect(uri, uri=True)
+        except Exception:
+            conn = sqlite3.connect(db_path)
+        try:
             df = pd.read_sql_query(f"SELECT {', '.join(COLUMNS)} FROM readings", conn)
+        finally:
+            conn.close()
     except (sqlite3.OperationalError, pd.errors.DatabaseError) as exc:
         logger.warning("Could not read readings table: %s", exc)
         return empty

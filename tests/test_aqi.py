@@ -100,3 +100,20 @@ def test_pm25_no2_correlation():
     df["no2"] = df["pm25"] * 0.5 + 3
     result = analysis.pm25_no2_correlation(df)
     assert result is not None and result["r"] == pytest.approx(1.0)
+
+
+def test_latest_by_station_ignores_stale_stations():
+    import pandas as pd
+    from src import analysis
+
+    def rows(sid, name, end, hours=30):
+        ts = pd.date_range(end=end, periods=hours, freq="h", tz="Asia/Kolkata")
+        return pd.DataFrame({"station_id": sid, "station": name, "ts": ts, "pm25": 60.0,
+                             "pm10": 90.0, "no2": 20.0, "o3": 20.0, "source": "openaq"})
+
+    now = pd.Timestamp("2026-10-31 15:00", tz="Asia/Kolkata")
+    df = pd.concat([rows("1", "Active", now), rows("2", "Offline since days", now - pd.Timedelta(hours=60))])
+    out = analysis.latest_by_station(analysis.prepare(df))
+    assert list(out["station"]) == ["Active"]
+    both = analysis.latest_by_station(analysis.prepare(df), max_age_hours=None)
+    assert len(both) == 2
