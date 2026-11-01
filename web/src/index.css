@@ -116,6 +116,9 @@ body {
 
 /* Leaflet polish */
 .leaflet-container { font-family: var(--font-sans); background: var(--surface-2); outline: none; }
+/* OpenStreetMap is colourful; tone it down so the AQI pins stay the focus. Dark theme = inverted tiles. */
+.map-light .leaflet-tile-pane { filter: grayscale(0.85) contrast(0.92) brightness(1.04); }
+.map-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.92) contrast(0.9); }
 .leaflet-control-attribution { font-size: 10px !important; background: color-mix(in srgb, var(--surface) 85%, transparent) !important; color: var(--ink-3) !important; }
 .leaflet-control-attribution a { color: var(--ink-2) !important; }
 .leaflet-bar a { background: var(--surface) !important; color: var(--ink) !important; border-color: var(--line) !important; }

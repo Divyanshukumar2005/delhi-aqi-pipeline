@@ -18,17 +18,22 @@ interface Props {
 }
 
 interface Basemap { url: string; attr: string; subdomains: string }
-const CARTO_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+/**
+ * CARTO's free basemap URLs now answer with an "API KEY REQUIRED" watermark. Those tiles still load
+ * (HTTP 200), so a tile-error fallback never fires. OpenStreetMap needs no key; OSM France is the backup.
+ * The theme is applied with a CSS filter on the tile pane (see index.css), not with a different tile set.
+ */
 const OSM: Basemap = {
   url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   subdomains: 'abc',
 };
-/** CARTO first (matches the theme); OpenStreetMap is the fallback if CARTO tiles are blocked or fail. */
-const BASEMAPS: Record<'light' | 'dark', Basemap[]> = {
-  light: [{ url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attr: CARTO_ATTR, subdomains: 'abcd' }, OSM],
-  dark: [{ url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attr: CARTO_ATTR, subdomains: 'abcd' }, OSM],
+const OSM_FR: Basemap = {
+  url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',
+  attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, tiles by OSM France',
+  subdomains: 'abc',
 };
+const BASEMAPS: Record<'light' | 'dark', Basemap[]> = { light: [OSM, OSM_FR], dark: [OSM, OSM_FR] };
 const DELHI: [number, number] = [28.6139, 77.209];
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -148,7 +153,7 @@ export function MapCanvas({ stations, selectedId, onSelect, theme, view, cityAqi
   }, [selectedId, stations, view]);
 
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full map-${theme}`}>
       {/* explicit size: Leaflet draws nothing into a zero-height box */}
       <div ref={el} className="absolute inset-0" style={{ minHeight: 320 }} />
       {tilesFailed && (
