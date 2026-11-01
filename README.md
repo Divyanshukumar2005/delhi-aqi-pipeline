@@ -144,7 +144,7 @@ flowchart LR
 | Web dashboard | React 19, TypeScript, Vite, Tailwind CSS, Recharts, Leaflet with OpenStreetMap tiles |
 | Python dashboard | Streamlit, Plotly |
 | Hosting | Vercel (React), GitHub (data) |
-| Testing | pytest, 70 offline tests with mocked APIs |
+| Testing | pytest, 73 offline tests with mocked APIs |
 
 ## Key findings
 
@@ -313,7 +313,7 @@ delhi-aqi-pipeline/
 │   ├── analysis.py         # CPCB AQI and insight functions
 │   └── forecast.py         # 24-hour statistical forecast
 ├── sql/                    # 15 analytical SQL queries, shared views and a read-only runner
-├── tests/                  # 70 offline tests (APIs mocked, synthetic data)
+├── tests/                  # 73 offline tests (APIs mocked, synthetic data)
 ├── data/                   # aqi.db, stations.json, readings.json (committed)
 ├── web/                    # React + TypeScript dashboard (deployed on Vercel)
 │   └── src/                # components/, lib/ (AQI, stats, forecast), views/ (one file per tab)
