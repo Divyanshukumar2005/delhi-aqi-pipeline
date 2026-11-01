@@ -12,7 +12,7 @@
 
 ### 🔗 [Open the live dashboard](https://delhi-aqi-pipeline-g3tm.vercel.app/)
 
-| **30** | **54,000+** | **3x per day** | **70** |
+| **30** | **54,000+** | **3x per day** | **73** |
 |:---:|:---:|:---:|:---:|
 | government monitoring stations | hourly readings stored | automated runs, no manual steps | tests passing in CI |
 
