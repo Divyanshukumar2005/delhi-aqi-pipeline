@@ -2,16 +2,15 @@
 
 [![Collect Delhi AQI data](https://github.com/Divyanshukumar2005/delhi-aqi-pipeline/actions/workflows/collect.yml/badge.svg)](https://github.com/Divyanshukumar2005/delhi-aqi-pipeline/actions/workflows/collect.yml)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
+![React](https://img.shields.io/badge/react-19-61dafb)
 ![Tests](https://img.shields.io/badge/tests-46%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 **An automated data pipeline that collects hourly air-quality readings from 30 government monitoring stations across Delhi-NCR, computes India's official CPCB AQI, and serves it on a live dashboard. It runs three times a day with no manual steps.**
 
-### 🔗 [Live dashboard](https://delhi-aqi-pipeline-g3tm.vercel.app/)
+### 🔗 [Open the live dashboard](https://delhi-aqi-pipeline-g3tm.vercel.app/)
 
-<!-- After you save a screenshot as docs/dashboard.png, remove this comment line and the closing one below to show it:
-![Dashboard overview](docs/dashboard.png)
--->
+![Dashboard overview: Delhi-NCR AQI dial, health advice and sub-region summary](docs/overview.png)
 
 ---
 
@@ -23,20 +22,34 @@ Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbou
 |---|---|
 | **Coverage** | 30 CPCB / DPCC / IMD / state-board monitors in Delhi, Gurugram, Noida, Faridabad and Bahadurgarh |
 | **Pollutants** | PM2.5, PM10, NO₂, O₃ (hourly) |
-| **Data volume** | ~53,600 hourly readings, 92 days of history (1 Aug 2026 onwards), growing 3× daily |
+| **Data volume** | 54,000+ hourly readings and 90+ days of history (from 1 Aug 2026), growing three times a day |
 | **Automation** | GitHub Actions at 08:00, 14:00 and 20:00 IST; tests run before every collection |
 | **AQI method** | CPCB National AQI from 24-hour rolling PM2.5 / PM10 averages |
-| **Quality** | 46 automated tests; idempotent loads; automatic fallback data source |
+| **Quality** | 46 automated tests, idempotent loads, automatic fallback data source |
+
+## Dashboard tour
+
+| Station map | Trends |
+|---|---|
+| ![Map of monitoring stations coloured by AQI with a ranked list](docs/map.jpg) | ![PM2.5 trend against the CPCB limit with a day-by-day table](docs/trends.png) |
+| **Map and ranking.** Every station on an OpenStreetMap basemap, coloured by its CPCB category. Pins that have not reported recently are faded. | **Trends.** City AQI and each pollutant over time, with the CPCB limit marked. Gaps in reporting are drawn as dashed lines instead of hidden. |
+
+| 24-hour forecast | Insights |
+|---|---|
+| ![Next 24 hours forecast with an 80 percent range](docs/forecast.png) | ![Daily rhythm, station spread, weekday vs weekend test and Diwali benchmark](docs/insights.png) |
+| **Forecast.** A simple baseline (recent level plus the typical hour-of-day pattern) with an 80% range, back-tested against a "stays the same" baseline. | **Insights.** Findings computed live from the data, including a Welch's t-test for weekday vs weekend and a Diwali before/after benchmark. |
+
+The dashboard also has a **Heatmap** tab (city by day and hour, and station by hour), a **Stations** tab for side-by-side comparison, and a **Method** tab that documents the pipeline, the AQI formula and the known limits.
 
 ## Features
 
-- **Reliable ingestion:** OpenAQ API v3 client with rate-limit handling (HTTP 429), retries with exponential backoff, and per-station error isolation so one failing station never stops a run.
+- **Reliable ingestion:** OpenAQ API v3 client with rate-limit handling (HTTP 429), retries with exponential backoff, and per-station error isolation, so one failing station never stops a run.
 - **Idempotent storage:** a composite primary key plus `INSERT OR IGNORE` means re-running any job can never create duplicates. Each run re-fetches 48 hours, so a missed run heals itself.
-- **Data cleaning:** future hours dropped, physically impossible values (sensor error codes) set to NULL using documented thresholds.
-- **Official AQI:** the CPCB sub-index method with the 16-valid-hours rule, unit-tested against CPCB's own worked example.
-- **Automatic fallback:** if the OpenAQ key is missing or fewer than 3 stations respond, the pipeline adds model-based CAMS data from Open-Meteo. Every row carries a `source` column and the dashboard labels model data clearly.
-- **Live dashboard (React):** multiple views including map and station rankings, hour-of-day heatmap, pollutant trends, station deep-dive, side-by-side comparison, a 24-hour forecast and computed insights, with light and dark themes and CSV export.
-- **Second dashboard (Streamlit):** a Python-only version of the same views that reads the full database, useful for analysis over the whole history.
+- **Data cleaning:** future hours dropped, and physically impossible values (sensor error codes) set to NULL using documented thresholds.
+- **Official AQI:** the CPCB sub-index method with the 16-valid-hours rule, unit-tested against CPCB's own worked example. The React app recomputes it in the browser from raw concentrations, so every number can be traced back.
+- **Automatic fallback:** if the OpenAQ key is missing or fewer than 3 stations respond, the pipeline adds model-based CAMS data from Open-Meteo. Every row carries a `source` column and model data is always labelled.
+- **Honest gaps:** when monitors stop reporting, charts show a dashed interpolated stretch and tables and statistics use only real readings.
+- **Two dashboards:** a React app for the public view and a Python-only Streamlit app that reads the full database.
 
 ## Architecture
 
@@ -54,7 +67,7 @@ flowchart LR
     F --> J["Streamlit dashboard<br/>app.py"]
 ```
 
-**Why this design:** the whole system runs on free tiers (GitHub Actions, Vercel, OpenAQ). The database lives in the repo, so the commit history doubles as an audit trail of every data update. The React dashboard fetches fresh JSON straight from the repo, so it updates itself without being redeployed.
+**Why this design:** the whole system runs on free tiers (GitHub Actions, Vercel, OpenAQ). The database lives in the repo, so the commit history doubles as an audit trail of every data update. The React dashboard fetches fresh JSON straight from the repo, so it updates itself without being redeployed, and it ships a bundled copy of the data as a fallback if GitHub is unreachable.
 
 ## Tech stack
 
@@ -64,23 +77,26 @@ flowchart LR
 | Processing and analysis | pandas, NumPy, SciPy (Welch's t-test, Pearson correlation) |
 | Storage | SQLite |
 | Automation and CI | GitHub Actions (scheduled runs, pytest gate, bot commits) |
-| Dashboards | React 19, TypeScript, Vite, Tailwind CSS (`web/`); Streamlit + Plotly (`app.py`) |
+| Web dashboard | React 19, TypeScript, Vite, Tailwind CSS, Recharts, Leaflet with OpenStreetMap tiles |
+| Python dashboard | Streamlit, Plotly |
 | Hosting | Vercel (React), GitHub (data) |
 | Testing | pytest, 46 offline tests with mocked APIs |
 
-## Insights
+## Insights snapshot
 
-The dashboard computes these live from the data. Snapshot from 31 Oct 2026, 16:00 IST:
+The dashboard computes these live. Values below are from **1 Nov 2026, 13:00 IST**:
 
-- **Basin-wide AQI: 109 (Moderate)** across 30 stations.
-- **Most polluted:** Jahangirpuri, Delhi (AQI 260, Poor). **Cleanest:** Lodhi Road, Delhi (AQI 31, Good).
-- By sub-region, Delhi (118) was worse than Gurugram (76), Noida (93), Faridabad (78) and Bahadurgarh (82).
+- **Basin-wide AQI: 265 (Poor)**, averaged over the 25 stations that reported in the last 3 hours.
+- **By area:** Delhi 302 (Very Poor), Noida 249, Bahadurgarh 249, Gurugram 137, Faridabad 114.
+- **Most polluted:** Jahangirpuri, Delhi (AQI 379). **Cleanest:** Sector 30, Faridabad (AQI 68). A 311-point gap inside one metro region, which a single "Delhi AQI" figure hides.
+- **Daily rhythm:** city-wide PM2.5 is highest near 00:00 IST (about 112 µg/m³) and lowest near 15:00 IST (about 59 µg/m³).
+- **Weekday vs weekend:** no significant difference yet (Welch's t-test, p = 0.587, 7 weekdays vs 2 weekend days), which mainly reflects how few days are available.
 
-The Diwali 2026 comparison (7 days before vs 7 days from 8 Nov) is computed automatically once enough days have been collected and will be added here after mid-November.
+The **Diwali 2026 benchmark** (7 days before vs 7 days from 8 Nov) fills in automatically once enough days have been collected.
 
 ## Quick start
 
-**Prerequisites:** Python 3.11, Git, a current Node.js LTS, v20.19 or newer (only for the React dashboard), and a free [OpenAQ API key](https://explore.openaq.org/register).
+**Prerequisites:** Python 3.11, Git, a current Node.js LTS (v20.19 or newer, only for the React dashboard), and a free [OpenAQ API key](https://explore.openaq.org/register).
 
 ```bash
 git clone https://github.com/Divyanshukumar2005/delhi-aqi-pipeline.git
@@ -102,7 +118,7 @@ pytest                             # 46 tests should pass
 **Run the dashboards locally**
 
 ```bash
-streamlit run app.py               # Streamlit, http://localhost:8501
+streamlit run app.py                    # Streamlit, http://localhost:8501
 
 cd web && npm install && npm run dev    # React, http://localhost:3000
 ```
@@ -118,7 +134,7 @@ By default the React app reads live data from this repo. To point it at your own
 5. **Deploy the React dashboard:** on [vercel.com](https://vercel.com) choose *Add New Project*, pick the repo, set **Root Directory** to `web` (Vite is auto-detected) and deploy. No environment variables are needed.
 6. *(Optional)* Deploy `app.py` on [Streamlit Community Cloud](https://share.streamlit.io) for the Python dashboard.
 
-**Verify it works:** the latest Actions run is green and shows a new `data: update AQI readings` commit by `github-actions[bot]`; opening `data/readings.json` through `raw.githubusercontent.com` returns data; the dashboard's "Last ingested" time moves forward after each scheduled run (allow up to 5 minutes for GitHub's cache).
+**Verify it works:** the latest Actions run is green and shows a new `data: update AQI readings` commit by `github-actions[bot]`; `data/readings.json` opens through `raw.githubusercontent.com`; and the dashboard's "Updated" time moves forward after each scheduled run (allow up to 5 minutes for GitHub's cache).
 
 ### Troubleshooting
 
@@ -129,7 +145,8 @@ By default the React app reads live data from this repo. To point it at your own
 | **429 Too Many Requests** | Free limit (60/min, 2,000/hour) reached | The client waits and retries; avoid running backfill several times in one hour |
 | Run happens at an unexpected time | GitHub cron uses **UTC**, and runs can start 5 to 30 minutes late | `30 2,8,14 * * *` = 08:00, 14:00, 20:00 IST |
 | `stations.json` empty / no active stations | Stations were offline during discovery | Run `python src/discover.py` again later; the collector uses the fallback meanwhile |
-| React dashboard shows older data than expected | GitHub caches raw files for about 5 minutes | Wait and refresh; if GitHub is unreachable the app shows the bundled copy |
+| React dashboard shows older data than expected | GitHub caches raw files for about 5 minutes | Wait and refresh; if GitHub is unreachable the app shows its bundled copy |
+| Map shows pins but no streets | Basemap tiles blocked by a network or an ad-blocker | Allow `tile.openstreetmap.org`; pins are still placed by coordinates |
 | Vercel build fails / blank page | Wrong root directory | Set **Root Directory** to `web` in Vercel project settings |
 | Streamlit app "has gone to sleep" | Free apps sleep after inactivity | Click *Yes, get this app back up* (about 30 seconds) |
 
@@ -154,12 +171,13 @@ By default the React app reads live data from this repo. To point it at your own
 
 ## Limitations
 
-- **Station outages and gaps:** monitors go offline, hours with missing data are simply absent, and an AQI needs 16 of 24 hours.
+- **Station outages and gaps:** monitors go offline, hours with missing data are simply absent, and an AQI needs 16 of 24 hours. For example, only one station reported on 24 to 26 Oct 2026 in the OpenAQ feed, so the dashboard shows that stretch as a gap.
 - **PM-only AQI:** the official CPCB index uses up to 8 pollutants (minimum 3 including a PM). This project uses PM2.5 and PM10, which drive Delhi's AQI almost always; NO₂ and O₃ are shown for context.
-- **Fallback is model-based:** Open-Meteo / CAMS values are modelled on a coarse grid (roughly 45 km over India), so nearby "stations" look almost identical. They are always labelled "(model)".
+- **Fallback is model-based:** Open-Meteo / CAMS values are modelled on a coarse grid (roughly 45 km over India), so nearby "stations" look almost identical. They are always labelled as model data.
 - **Web dashboard window:** the React dashboard shows the latest 14 days to keep loading fast; the full history is in `data/aqi.db` and the Streamlit dashboard.
-- **Forecast is a baseline:** the 24-hour forecast is a simple statistical projection (recent level plus typical hour-of-day pattern), not a trained model.
-- **Correlation, not causation:** the weekday vs weekend test cannot separate traffic from weather.
+- **Forecast is a baseline:** the 24-hour forecast uses past readings only (no weather inputs) and is meant as a baseline, not an advisory. Its back-test is shown on the Forecast tab.
+- **Correlation, not causation:** the weekday vs weekend test cannot separate traffic from weather, and short histories make seasonal conclusions unreliable.
+- **Station positions:** some monitors are missing from the station list, so a few map positions are approximate.
 - **Time labels:** OpenAQ aggregates in UTC hours, so some stations show half-hour IST labels (for example 13:30).
 
 ## Assumptions
@@ -169,6 +187,7 @@ By default the React app reads live data from this repo. To point it at your own
 - **Units:** gases reported in ppm / ppb are converted to µg/m³ at 25 °C.
 - **Sanity limits (µg/m³):** negative values, or above PM2.5 1500, PM10 2500, NO₂ 1000, O₃ 1000, are treated as missing (`src/config.py`).
 - **Severe band:** CPCB only states "250+" and "430+"; the same band width as Very Poor is assumed and the AQI is capped at 500.
+- **City figure:** the mean AQI of stations that reported within the last 3 hours.
 - **Diwali window:** "before" is the 7 days up to 7 Nov 2026 and "after" is 8 to 14 Nov (Diwali night counts as after); shown only when each side has enough days.
 - **Weekday vs weekend test** uses daily city averages because consecutive hours are not independent.
 
@@ -183,6 +202,7 @@ By default the React app reads live data from this repo. To point it at your own
 
 - **[OpenAQ](https://openaq.org):** open air-quality data platform; Delhi data originates from government monitors (CPCB, DPCC, IMD and state pollution control boards). Each provider's licence applies.
 - **Copernicus Atmosphere Monitoring Service (CAMS):** "Generated using Copernicus Atmosphere Monitoring Service information." Model data used only as a fallback, accessed through **[Open-Meteo](https://open-meteo.com)** (CC BY 4.0).
+- **Map:** © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors, rendered with [Leaflet](https://leafletjs.com).
 - **AQI method:** Central Pollution Control Board, *National Air Quality Index*, CUPS/82/2014-15 ([report](https://smartnet.niua.org/sites/default/files/resources/Air%20Quality%20Index.pdf), [summary with worked examples](https://ies.gov.in/arthapedia/concept/national-air-quality-index), [CPCB](https://cpcb.nic.in)).
 
 ## Project structure
@@ -205,6 +225,8 @@ delhi-aqi-pipeline/
 ├── tests/                  # 46 offline tests (APIs mocked)
 ├── data/                   # aqi.db, stations.json, readings.json (committed)
 ├── web/                    # React + TypeScript dashboard (deployed on Vercel)
+│   └── src/                # components/, lib/ (AQI, stats, forecast), views/ (one file per tab)
+├── docs/                   # dashboard screenshots used in this README
 ├── app.py                  # Streamlit dashboard
 ├── requirements.txt
 └── README.md
