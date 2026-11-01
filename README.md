@@ -1,8 +1,6 @@
 # Delhi-NCR Air Quality Tracker
 
-[![Live demo](https://img.shields.io/badge/live%20demo-open-brightgreen)](https://delhi-aqi-pipeline-g3tm.vercel.app/)
 [![Collect Delhi AQI data](https://github.com/Divyanshukumar2005/delhi-aqi-pipeline/actions/workflows/collect.yml/badge.svg)](https://github.com/Divyanshukumar2005/delhi-aqi-pipeline/actions/workflows/collect.yml)
-![Data updated](https://img.shields.io/github/last-commit/Divyanshukumar2005/delhi-aqi-pipeline?label=data%20updated)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![React](https://img.shields.io/badge/react-19-61dafb)
 ![Tests](https://img.shields.io/badge/tests-46%20passing-brightgreen)
@@ -14,13 +12,11 @@
 
 ![Dashboard overview: Delhi-NCR AQI dial, health advice and sub-region summary](docs/overview.png)
 
-**Jump to:** [Overview](#overview) · [Dashboard tour](#dashboard-tour) · [Architecture](#architecture) · [Engineering decisions](#engineering-decisions) · [Quick start](#quick-start) · [Deploy your own](#deploy-your-own-copy) · [How the AQI is computed](#how-the-cpcb-aqi-is-computed) · [Limitations](#limitations)
-
 ---
 
 ## Overview
 
-Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbourhood to the next. This project answers "how bad is it right now, where, and how does it compare with earlier days?" using real monitor data rather than model estimates. The goal was a complete, production-style data project (ingest, validate, store, analyse, serve) that runs entirely on free infrastructure.
+Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbourhood to the next. This project answers "how bad is it right now, where, and how does it compare with earlier days?" using real monitor data rather than model estimates.
 
 | | |
 |---|---|
@@ -72,19 +68,6 @@ flowchart LR
 ```
 
 **Why this design:** the whole system runs on free tiers (GitHub Actions, Vercel, OpenAQ). The database lives in the repo, so the commit history doubles as an audit trail of every data update. The React dashboard fetches fresh JSON straight from the repo, so it updates itself without being redeployed, and it ships a bundled copy of the data as a fallback if GitHub is unreachable.
-
-## Engineering decisions
-
-| Decision | Why | Trade-off |
-|---|---|---|
-| **Reference monitors only** (no low-cost sensors) | Mixing sensor classes makes station-to-station comparisons unfair | Fewer stations than the full OpenAQ list |
-| **Idempotent loads** (`PRIMARY KEY` + `INSERT OR IGNORE`) | Any job can be re-run safely, so retries and manual runs never create duplicates | Late corrections to an hour already stored are not applied |
-| **Re-fetch the last 48 hours every run** | A missed or failed run heals itself on the next one | A few redundant API calls |
-| **SQLite committed to the repo** | Zero infrastructure, and the git history is an audit trail of every data update | The database file grows over time; long-term history should move out of git |
-| **Static JSON instead of an API server** | No backend to host or pay for; `raw.githubusercontent.com` serves it with CORS enabled | Updates are batch (3 times a day), not real time |
-| **AQI computed from raw concentrations** | Every dashboard number can be traced to a PM reading, and the method is documented and unit-tested | The dashboard repeats the calculation instead of reading a stored AQI |
-| **Fallback source, always labelled** | The pipeline keeps producing data if OpenAQ is down, and model data is never passed off as measurements | Fallback values are coarse (roughly 45 km grid) |
-| **Gaps shown, not hidden** | Dashed lines mark stretches when monitors stopped reporting; tables and statistics use only real readings | Charts look less tidy than a smoothed line |
 
 ## Tech stack
 
@@ -155,9 +138,6 @@ By default the React app reads live data from this repo. To point it at your own
 
 ### Troubleshooting
 
-<details>
-<summary>Common problems and fixes</summary>
-
 | Problem | Cause | Fix |
 |---|---|---|
 | Workflow fails at push with **403** | Workflow cannot write to the repo | Set **Read and write permissions** (step 3) |
@@ -169,8 +149,6 @@ By default the React app reads live data from this repo. To point it at your own
 | Map shows pins but no streets | Basemap tiles blocked by a network or an ad-blocker | Allow `tile.openstreetmap.org`; pins are still placed by coordinates |
 | Vercel build fails / blank page | Wrong root directory | Set **Root Directory** to `web` in Vercel project settings |
 | Streamlit app "has gone to sleep" | Free apps sleep after inactivity | Click *Yes, get this app back up* (about 30 seconds) |
-
-</details>
 
 > **Keep-alive note:** GitHub can disable scheduled workflows on public repos after 60 days without repository activity, and bot commits may not count as activity. Check the Actions tab now and then; if a "workflow disabled" banner appears, click **Enable workflow**.
 
@@ -204,9 +182,6 @@ By default the React app reads live data from this repo. To point it at your own
 
 ## Assumptions
 
-<details>
-<summary>Show assumptions</summary>
-
 - **Station choice:** stationary OpenAQ **reference monitors** within 25 km (the API maximum) of 28.54, 77.13 that have a PM2.5 sensor and reported within the last 24 hours; up to 30 are kept. Low-cost sensors are excluded so comparisons are fair.
 - **Hourly data:** OpenAQ's precomputed `/v3/sensors/{id}/hours` endpoint, each hour labelled by its start time converted to IST.
 - **Units:** gases reported in ppm / ppb are converted to µg/m³ at 25 °C.
@@ -216,15 +191,12 @@ By default the React app reads live data from this repo. To point it at your own
 - **Diwali window:** "before" is the 7 days up to 7 Nov 2026 and "after" is 8 to 14 Nov (Diwali night counts as after); shown only when each side has enough days.
 - **Weekday vs weekend test** uses daily city averages because consecutive hours are not independent.
 
-</details>
-
 ## Future work
 
 - Alerts (email or Telegram) when AQI crosses "Very Poor".
 - A trained forecasting model (for example gradient boosting) for next-day AQI.
 - Weather features (wind, temperature, boundary-layer height) to explain pollution spikes.
 - Stubble-burning fire counts (NASA FIRMS) as an explanatory variable.
-- Move long-term history out of git (for example Parquet files in GitHub Releases) as the database grows.
 
 ## Data sources and attribution
 
@@ -234,9 +206,6 @@ By default the React app reads live data from this repo. To point it at your own
 - **AQI method:** Central Pollution Control Board, *National Air Quality Index*, CUPS/82/2014-15 ([report](https://smartnet.niua.org/sites/default/files/resources/Air%20Quality%20Index.pdf), [summary with worked examples](https://ies.gov.in/arthapedia/concept/national-air-quality-index), [CPCB](https://cpcb.nic.in)).
 
 ## Project structure
-
-<details>
-<summary>Show project structure</summary>
 
 ```
 delhi-aqi-pipeline/
@@ -262,8 +231,6 @@ delhi-aqi-pipeline/
 ├── requirements.txt
 └── README.md
 ```
-
-</details>
 
 ## License
 
