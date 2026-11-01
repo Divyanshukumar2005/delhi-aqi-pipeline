@@ -54,7 +54,7 @@ The queries build on four TEMP views (in memory only, never saved to the databas
 
 ## Selected results
 
-Run on the data up to 1 Nov 2026, 13:00 IST. The numbers change as new data arrives.
+Run on the data up to 1 Nov 2026, 13:00 IST. The numbers change as new data arrives. **All 15 query results: [RESULTS.md](RESULTS.md).**
 
 **Q02  Monthly pollution trend with month-over-month change**
 
