@@ -5,7 +5,7 @@
 ![Data updated](https://img.shields.io/github/last-commit/Divyanshukumar2005/delhi-aqi-pipeline?label=data%20updated)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![React](https://img.shields.io/badge/react-19-61dafb)
-![Tests](https://img.shields.io/badge/tests-70%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-73%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 **An automated data pipeline that collects hourly air-quality readings from 30 government monitoring stations across Delhi-NCR, computes India's official CPCB AQI, and serves it on a live dashboard. It runs three times a day with no manual steps.**
@@ -33,7 +33,7 @@ Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbou
 | **Data volume** | 54,000+ hourly readings and 90+ days of history (from 1 Aug 2026), growing three times a day |
 | **Automation** | GitHub Actions at 08:00, 14:00 and 20:00 IST; tests run before every collection |
 | **AQI method** | CPCB National AQI from 24-hour rolling PM2.5 / PM10 averages |
-| **Quality** | 70 automated tests, idempotent loads, automatic fallback data source |
+| **Quality** | 73 automated tests, idempotent loads, automatic fallback data source |
 
 ## Dashboard tour
 
@@ -96,7 +96,7 @@ flowchart LR
 ### What one automated run does
 
 1. Check out the repo and set up Python 3.11.
-2. Install dependencies and **run the 70 tests** (a failing test stops the run before any data changes).
+2. Install dependencies and **run the 73 tests** (a failing test stops the run before any data changes).
 3. Optionally backfill history (manual runs only).
 4. Collect the last 48 hours from OpenAQ, with the Open-Meteo fallback if needed.
 5. Export the last 14 days to `data/readings.json` for the web dashboard.
@@ -188,7 +188,7 @@ python src/backfill.py             # one-time, ~90 days of history (a few minute
 python src/collect.py              # the regular job (last 48 hours)
 python src/export_json.py          # JSON for the React dashboard
 python sql/run.py                  # the 15 SQL analytics queries
-pytest                             # 70 tests should pass
+pytest                             # 73 tests should pass
 ```
 
 **Run the dashboards locally**
