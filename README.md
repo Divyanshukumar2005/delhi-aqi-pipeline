@@ -18,7 +18,6 @@
 
 ![Dashboard overview: Delhi-NCR AQI dial, health advice and sub-region summary](docs/overview.png)
 
-**Jump to:** [Overview](#overview) · [Dashboard tour](#dashboard-tour) · [Key findings](#key-findings) · [SQL analytics](#sql-analytics) · [Architecture](#architecture) · [Data model](#data-model) · [Engineering decisions](#engineering-decisions) · [Quick start](#quick-start) · [Deploy your own](#deploy-your-own-copy) · [How the AQI is computed](#how-the-cpcb-aqi-is-computed) · [Limitations](#limitations)
 
 ---
 
