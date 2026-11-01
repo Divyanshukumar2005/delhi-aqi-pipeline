@@ -52,75 +52,16 @@ The queries build on four TEMP views (in memory only, never saved to the databas
 | 14 | `14_weekday_vs_weekend.sql` | Is pollution different on weekends? | `strftime('%w')`, `GROUP BY` |
 | 15 | `15_diwali_benchmark.sql` | How does air quality change around Diwali? | Parameter CTE, date arithmetic |
 
-## Selected results
+## Results
 
-Run on the data up to 1 Nov 2026, 13:00 IST. The numbers change as new data arrives. **All 15 query results: [RESULTS.md](RESULTS.md).**
-
-**Q02  Monthly pollution trend with month-over-month change**
-
-| month | days_covered | stations | station_hours | mean_aqi | change_vs_prev_month | pct_poor_or_worse |
-|---|---|---|---|---|---|---|
-| 2026-08 | 30 | 29 | 15865 | 78 |  | 0.6 |
-| 2026-09 | 30 | 29 | 18705 | 91 | 14 | 3.3 |
-| 2026-10 | 31 | 30 | 15007 | 162 | 71 | 26.9 |
-| 2026-11 | 1 | 25 | 347 | 230 | 68 | 62.5 |
-
-**Q04  Sub-region comparison including an all-NCR total row**
-
-| area | stations | station_hours | mean_aqi | peak_aqi | pct_poor_or_worse | pct_good_or_satisfactory |
-|---|---|---|---|---|---|---|
-| Gurugram | 2 | 3154 | 128 | 452 | 18.1 | 53.8 |
-| Noida | 3 | 5123 | 118 | 446 | 12.4 | 51.1 |
-| Faridabad | 2 | 3206 | 108 | 296 | 1.8 | 47.9 |
-| Delhi | 22 | 36600 | 107 | 379 | 9.7 | 58.4 |
-| Bahadurgarh | 1 | 1841 | 92 | 316 | 9 | 73.3 |
-| All NCR | 30 | 49924 | 109 | 452 | 10 | 57.3 |
-
-**Q08  Longest runs of consecutive "Poor or worse" days (gaps and islands)**
-
-| episode_start | episode_end | days_in_a_row | mean_city_aqi | peak_day_aqi |
-|---|---|---|---|---|
-| 2026-10-27 | 2026-10-29 | 3 | 234 | 243 |
-| 2026-10-21 | 2026-10-23 | 3 | 256 | 262 |
-| 2026-11-01 | 2026-11-01 | 1 | 230 | 230 |
-| 2026-10-18 | 2026-10-18 | 1 | 211 | 211 |
-
-**Q09  Longest reporting gaps (monitor outages)**
-
-| station | area | last_reading_before_gap | first_reading_after_gap | hours_missing | stations_with_same_gap |
-|---|---|---|---|---|---|
-| New Delhi | Delhi | 2026-09-24T15:00:00+05:30 | 2026-10-09T12:00:00+05:30 | 356 | 1 |
-| ITO, New Delhi - CPCB | Delhi | 2026-10-18T13:00:00+05:30 | 2026-10-27T16:00:00+05:30 | 218 | 1 |
-| Lodhi Road, Delhi - IITM | Delhi | 2026-10-12T14:00:00+05:30 | 2026-10-19T12:00:00+05:30 | 165 | 1 |
-| IGI Airport (T3), Delhi - IMD | Delhi | 2026-09-11T12:00:00+05:30 | 2026-09-18T09:00:00+05:30 | 164 | 1 |
-| ITO, New Delhi - CPCB | Delhi | 2026-08-27T14:00:00+05:30 | 2026-09-01T14:00:00+05:30 | 119 | 1 |
-| New Industrial Town, Faridabad - HSPCB | Faridabad | 2026-09-28T15:00:00+05:30 | 2026-10-02T10:00:00+05:30 | 90 | 1 |
-| Arya Nagar, Bahadurgarh - HSPCB | Bahadurgarh | 2026-10-23T20:00:00+05:30 | 2026-10-27T08:00:00+05:30 | 83 | 28 |
-| Ashok Vihar, Delhi - DPCC | Delhi | 2026-10-23T20:00:00+05:30 | 2026-10-27T08:00:00+05:30 | 83 | 28 |
-
-**Q10  Hotspots: stations that run hotter or cleaner than the city at the same hour**
-
-| kind | rank_no | station | area | hours_compared | avg_gap_to_city |
-|---|---|---|---|---|---|
-| hotter than city | 1 | Sector - 125, Noida, UP - UPPCB | Noida | 1753 | 31.4 |
-| hotter than city | 2 | Vikas Sadan, Gurugram - HSPCB | Gurugram | 1410 | 26.4 |
-| hotter than city | 3 | Sonia Vihar, Delhi - DPCC | Delhi | 1793 | 25.1 |
-| hotter than city | 4 | Sirifort, Delhi - CPCB | Delhi | 1846 | 24.7 |
-| hotter than city | 5 | Pusa, Delhi - DPCC | Delhi | 1795 | 19 |
-| cleaner than city | 1 | Shadipur, Delhi - CPCB | Delhi | 1764 | -42.5 |
-| cleaner than city | 2 | Sector-1, Noida - UPPCB | Noida | 1499 | -30.4 |
-| cleaner than city | 3 | Nehru Nagar, Delhi - DPCC | Delhi | 1855 | -25.8 |
-| cleaner than city | 4 | ITO, New Delhi - CPCB | Delhi | 1446 | -22.1 |
-| cleaner than city | 5 | IHBAS, Dilshad Garden,New Delhi - CPCB | Delhi | 1760 | -18.2 |
-
-**Q14  Weekday vs weekend city AQI**
-
-| day_type | days | mean_city_aqi | lowest_day | highest_day |
-|---|---|---|---|---|
-| Weekend | 23 | 102 | 44 | 230 |
-| Weekday | 63 | 115 | 46 | 262 |
+> ### 📊 [**See the full results of all 15 queries → `RESULTS.md`**](RESULTS.md)
+>
+> Every query's output as a table, from Q01 (data coverage) to Q15 (Diwali benchmark).
+> Generated with `python sql/run.py --markdown`, so it always matches the latest data in `data/aqi.db`.
 
 ## What the queries found
+
+The findings below were written from the data up to 1 Nov 2026, 13:00 IST. `RESULTS.md` is regenerated later, so its numbers can be slightly newer.
 
 - **A worsening season:** mean AQI went from 78 (August) to 91 (September) to 162 (October), and the share of Poor-or-worse station-hours went from 0.6% to 26.9% (Q02).
 - **Sub-regions:** Gurugram had the highest average (128) and Bahadurgarh the lowest (92). Faridabad had the smallest share of Poor-or-worse hours (1.8%). Gurugram and Faridabad each have only two stations, so treat their rows as indicative (Q04).
