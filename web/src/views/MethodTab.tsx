@@ -39,6 +39,7 @@ export function MethodTab() {
             <li>Some monitors are missing from the station list, so their map positions are approximate.</li>
             <li>When monitors stop reporting for hours or days, charts draw a dashed interpolated line across the stretch. Heatmaps leave out days with no coverage. Nothing in the tables or statistics is interpolated.</li>
             <li>The 24-hour forecast uses past readings only (no weather inputs). Its accuracy against a “stays the same” baseline is shown on the Forecast tab.</li>
+            <li>The ML Forecast tab shows a trained model’s 6, 12 and 24 hour predictions. Its error figures come from a 28-day back-test (4 rolling 7-day windows), which is short, so small differences between models are within noise.</li>
             <li>The history covers about two weeks, which is short for seasonal conclusions.</li>
           </ul>
         </Section>

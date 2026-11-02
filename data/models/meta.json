@@ -1,0 +1,93 @@
+{
+  "sklearn_version": "1.8.0",
+  "numpy_version": "2.4.6",
+  "training_date": "2026-11-03T00:44:02+05:30",
+  "models": {
+    "6": {
+      "method": "ridge",
+      "rows_used": 1484,
+      "feature_names": [
+        "aqi_now",
+        "aqi_lag_1",
+        "aqi_lag_2",
+        "aqi_lag_3",
+        "aqi_lag_6",
+        "aqi_lag_12",
+        "aqi_lag_24",
+        "aqi_lag_48",
+        "aqi_mean_24h",
+        "aqi_std_24h",
+        "aqi_change_3h",
+        "hour_sin",
+        "hour_cos",
+        "target_hour_sin",
+        "target_hour_cos",
+        "target_is_weekend"
+      ]
+    },
+    "12": {
+      "method": "ridge+weather",
+      "rows_used": 815,
+      "feature_names": [
+        "aqi_now",
+        "aqi_lag_1",
+        "aqi_lag_2",
+        "aqi_lag_3",
+        "aqi_lag_6",
+        "aqi_lag_12",
+        "aqi_lag_24",
+        "aqi_lag_48",
+        "aqi_mean_24h",
+        "aqi_std_24h",
+        "aqi_change_3h",
+        "hour_sin",
+        "hour_cos",
+        "target_hour_sin",
+        "target_hour_cos",
+        "target_is_weekend",
+        "wx_temperature_2m",
+        "wx_temperature_2m_target",
+        "wx_relative_humidity_2m",
+        "wx_relative_humidity_2m_target",
+        "wx_wind_speed_10m",
+        "wx_wind_speed_10m_target",
+        "wx_precipitation",
+        "wx_precipitation_target",
+        "wx_surface_pressure",
+        "wx_surface_pressure_target"
+      ]
+    },
+    "24": {
+      "method": "ridge+weather",
+      "rows_used": 770,
+      "feature_names": [
+        "aqi_now",
+        "aqi_lag_1",
+        "aqi_lag_2",
+        "aqi_lag_3",
+        "aqi_lag_6",
+        "aqi_lag_12",
+        "aqi_lag_24",
+        "aqi_lag_48",
+        "aqi_mean_24h",
+        "aqi_std_24h",
+        "aqi_change_3h",
+        "hour_sin",
+        "hour_cos",
+        "target_hour_sin",
+        "target_hour_cos",
+        "target_is_weekend",
+        "wx_temperature_2m",
+        "wx_temperature_2m_target",
+        "wx_relative_humidity_2m",
+        "wx_relative_humidity_2m_target",
+        "wx_wind_speed_10m",
+        "wx_wind_speed_10m_target",
+        "wx_precipitation",
+        "wx_precipitation_target",
+        "wx_surface_pressure",
+        "wx_surface_pressure_target"
+      ]
+    }
+  }
+}

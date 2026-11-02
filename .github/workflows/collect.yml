@@ -37,9 +37,11 @@ jobs:
           cache: pip
 
       - name: Install dependencies
+        # The core pipeline needs only requirements.txt. scikit-learn is installed later, for the ML step only.
         run: pip install -r requirements.txt
 
       - name: Run tests
+        # Tests that need scikit-learn or Flask skip themselves here; the ML step below runs the ML tests.
         run: pytest -q
 
       - name: Backfill history (only when requested)
@@ -52,13 +54,28 @@ jobs:
 
       - name: Export JSON for the web dashboard
         # Writes data/readings.json (last 14 days) that the React dashboard fetches.
-        run: python src/export_json.py
+        run: python src/export_json.py --skip-ml
+
+      - name: ML forecast for the dashboard (optional)
+        # Installs scikit-learn, joblib and Flask (pinned versions from requirements-ml.txt) for this step only, refreshes the
+        # weather file, runs the ML tests and writes data/ml_forecast.json. If anything here fails, the rest of the
+        # pipeline still runs and the dashboard shows the last committed file or "not available yet".
+        continue-on-error: true
+        run: |
+          pip install "$(grep -i '^scikit-learn==' requirements-ml.txt)" "$(grep -i '^joblib==' requirements-ml.txt)" "$(grep -i '^flask==' requirements-ml.txt)"
+          python src/fetch_weather.py || echo "Weather download failed; continuing (models that need weather will be skipped)."
+          pytest -q tests/test_ml_forecast.py tests/test_model_meta.py tests/test_export_ml.py tests/test_api.py
+          python src/export_json.py --ml-only
 
       - name: Commit and push the data if it changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/aqi.db data/stations.json data/readings.json
+          # the ML step is optional, so these files may not exist or may be unchanged
+          for f in data/ml_forecast.json data/weather.csv; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           if git diff --cached --quiet; then
             echo "No data changes to commit."
           else

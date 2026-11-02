@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go

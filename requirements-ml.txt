@@ -1,0 +1,5 @@
+# Only needed for the ML forecast (src/train_forecast.py) and the API (api.py). The main pipeline does not use these.
+scikit-learn==1.8.0
+matplotlib==3.10.8
+joblib==1.5.3
+flask==3.1.3

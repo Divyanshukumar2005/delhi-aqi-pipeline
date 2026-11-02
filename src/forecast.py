@@ -12,13 +12,31 @@ import pandas as pd
 from src import analysis
 
 
-def city_hourly(df: pd.DataFrame) -> pd.Series:
-    """Hourly city-mean AQI (average of all selected stations), IST index."""
+def city_hourly(df: pd.DataFrame, min_share: float = 0.5, fill_limit: int = 3) -> pd.Series:
+    """Hourly city-mean AQI (average of all selected stations), IST index.
+
+    An hour only counts when at least `min_share` of the usual number of stations reported it (the usual
+    number is the median over all hours). Otherwise the "city" value would really be one or two stations:
+    the newest hour is often only partly collected, and during an outage a single station can remain.
+    Gaps of up to `fill_limit` hours are filled by interpolation (0 = leave gaps empty).
+    """
     valid = analysis.with_valid_aqi(df)
     if valid.empty:
         return pd.Series(dtype=float)
-    s = valid.groupby("ts")["aqi"].mean().sort_index()
-    return s.resample("1h").mean().interpolate(limit=3).dropna()
+    per_hour = valid.groupby("ts").agg(aqi=("aqi", "mean"), n=("station_id", "nunique")).sort_index()
+    s = per_hour.loc[per_hour["n"] >= min_share * per_hour["n"].median(), "aqi"]
+    s = s.resample("1h").mean()
+    if fill_limit:
+        s = _fill_short_gaps(s, fill_limit)
+    return s.dropna()
+
+
+def _fill_short_gaps(s: pd.Series, limit: int) -> pd.Series:
+    """Interpolate gaps of at most `limit` hours; longer gaps stay empty (pandas' own `limit` would
+    fill the first `limit` hours of a long gap, which invents data during an outage)."""
+    missing = s.isna()
+    run_length = missing.groupby((missing != missing.shift()).cumsum()).transform("sum")
+    return s.interpolate(limit_area="inside").where(~missing | (run_length <= limit))
 
 
 def forecast_24h(s: pd.Series, horizon: int = 24) -> pd.DataFrame | None:

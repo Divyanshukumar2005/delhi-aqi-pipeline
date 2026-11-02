@@ -30,7 +30,7 @@ The queries build on four TEMP views (in memory only, never saved to the databas
 | `v_roll` | Rolling 24-hour PM2.5 and PM10 means (a mean needs at least 16 valid hours, as CPCB requires) |
 | `v_aqi` | CPCB sub-indices, the overall AQI (the larger sub-index, rounded half up, capped at 500) and its category |
 
-**The AQI maths is re-implemented in SQL, and checked against the Python version.** `tests/test_sql.py` compares the two row by row, and on the real database 49,911 of 49,924 values are identical; the other 13 differ by 1 point because of floating-point rounding, and none changes a category. The rolling window uses `RANGE BETWEEN 23 PRECEDING AND CURRENT ROW` over an absolute hour number, so a missing hour shortens the window instead of silently pulling in older data.
+**The AQI maths is re-implemented in SQL, and checked against the Python version.** `tests/test_sql.py` compares the two row by row, and on the real database 50,108 of 50,121 values are identical; the other 13 differ by 1 point because of floating-point rounding, and none changes a category. The rolling window uses `RANGE BETWEEN 23 PRECEDING AND CURRENT ROW` over an absolute hour number, so a missing hour shortens the window instead of silently pulling in older data.
 
 ## The queries
 
@@ -61,14 +61,14 @@ The queries build on four TEMP views (in memory only, never saved to the databas
 
 ## What the queries found
 
-The findings below were written from the data up to 1 Nov 2026, 13:00 IST. `RESULTS.md` is regenerated later, so its numbers can be slightly newer.
+The findings below were written from the data up to 1 Nov 2026, 22:00 IST. `RESULTS.md` is regenerated later, so its numbers can be slightly newer.
 
 - **A worsening season:** mean AQI went from 78 (August) to 91 (September) to 162 (October), and the share of Poor-or-worse station-hours went from 0.6% to 26.9% (Q02).
 - **Sub-regions:** Gurugram had the highest average (128) and Bahadurgarh the lowest (92). Faridabad had the smallest share of Poor-or-worse hours (1.8%). Gurugram and Faridabad each have only two stations, so treat their rows as indicative (Q04).
 - **A shared outage:** 28 stations stopped reporting at the same time, from 23 Oct 20:00 to 27 Oct 08:00 IST (83 hours). A gap this shared points to a problem in the data feed, not to 28 broken monitors (Q09).
 - **Local hotspots:** at the same hour, Sector-125 (Noida) ran about 31 AQI points above the city average, while Shadipur ran about 43 below, so one "Delhi AQI" figure hides large local differences (Q10).
 - **Weak link between PM2.5 and NO₂:** r² is only about 0.03 across the region, so the two pollutants do not track each other closely (Q11).
-- **Weekday vs weekend:** weekends averaged 102 and weekdays 115, but only 23 weekend days are available, so this is descriptive, not a proven effect (Q14).
+- **Weekday vs weekend:** weekends averaged 103 and weekdays 115 (days with at least 15 reporting stations: 23 weekend days, 63 weekdays), but this is descriptive, not a proven effect. The significance test in `src/analysis.py` finds p = 0.41 (Q14).
 
 ## Testing
 

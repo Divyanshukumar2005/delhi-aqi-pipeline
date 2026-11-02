@@ -5,14 +5,14 @@
 ![Data updated](https://img.shields.io/github/last-commit/Divyanshukumar2005/delhi-aqi-pipeline?label=data%20updated)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![React](https://img.shields.io/badge/react-19-61dafb)
-![Tests](https://img.shields.io/badge/tests-73%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 **An automated data pipeline that collects hourly air-quality readings from 30 government monitoring stations across Delhi-NCR, computes India's official CPCB AQI, and serves it on a live dashboard. It runs three times a day with no manual steps.**
 
 ### 🔗 [Open the live dashboard](https://delhi-aqi-pipeline-g3tm.vercel.app/)
 
-| **30** | **54,000+** | **3x per day** | **73** |
+| **30** | **54,000+** | **3x per day** | **117** |
 |:---:|:---:|:---:|:---:|
 | government monitoring stations | hourly readings stored | automated runs, no manual steps | tests passing in CI |
 
@@ -32,7 +32,7 @@ Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbou
 | **Data volume** | 54,000+ hourly readings and 90+ days of history (from 1 Aug 2026), growing three times a day |
 | **Automation** | GitHub Actions at 08:00, 14:00 and 20:00 IST; tests run before every collection |
 | **AQI method** | CPCB National AQI from 24-hour rolling PM2.5 / PM10 averages |
-| **Quality** | 73 automated tests, idempotent loads, automatic fallback data source |
+| **Quality** | 117 automated tests, idempotent loads, automatic fallback data source |
 
 ## Dashboard tour
 
@@ -46,7 +46,7 @@ Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbou
 | ![Next 24 hours forecast with an 80 percent range](docs/forecast.png) | ![Daily rhythm, station spread, weekday vs weekend test and Diwali benchmark](docs/insights.png) |
 | **Forecast.** A simple baseline (recent level plus the typical hour-of-day pattern) with an 80% range, back-tested against a "stays the same" baseline. | **Insights.** Findings computed live from the data, including a Welch's t-test for weekday vs weekend and a Diwali before/after benchmark. |
 
-The dashboard also has a **Heatmap** tab (city by day and hour, and station by hour), a **Stations** tab for side-by-side comparison, and a **Method** tab that documents the pipeline, the AQI formula and the known limits.
+The dashboard also has a **Heatmap** tab (city by day and hour, and station by hour), a **Stations** tab for side-by-side comparison, an **ML Forecast** tab with the trained model's 6, 12 and 24 hour predictions and its back-test error, and a **Method** tab that documents the pipeline, the AQI formula and the known limits.
 
 ## Features
 
@@ -56,6 +56,7 @@ The dashboard also has a **Heatmap** tab (city by day and hour, and station by h
 - **Official AQI:** the CPCB sub-index method with the 16-valid-hours rule, unit-tested against CPCB's own worked example. The React app recomputes it in the browser from raw concentrations, so every number can be traced back.
 - **Automatic fallback:** if the OpenAQ key is missing or fewer than 3 stations respond, the pipeline adds model-based CAMS data from Open-Meteo. Every row carries a `source` column and model data is always labelled.
 - **SQL analytics layer:** 15 documented queries (window functions, CTEs, gaps-and-islands, pivots) run directly on the database, with the CPCB AQI re-implemented in SQL and checked against the Python version. See [`sql/`](sql/README.md).
+- **ML forecast:** a trained model (ridge regression, random forest, gradient boosting) predicts the city AQI 6, 12 and 24 hours ahead, scored with time-ordered rolling windows against simple baselines. On a 28-day back-test (4 rolling 7-day windows), the best model had 25-35% lower error than "same as now"; small differences at this test length are within noise. See [ML forecast](#ml-forecast).
 - **Honest gaps:** when monitors stop reporting, charts show a dashed interpolated stretch and tables and statistics use only real readings.
 - **Two dashboards:** a React app for the public view and a Python-only Streamlit app that reads the full database.
 
@@ -68,11 +69,74 @@ python sql/run.py                  # run all 15 queries
 python sql/run.py --only 3 8 9     # run selected queries
 ```
 
-The CPCB AQI is re-implemented in SQL and tested against the Python implementation: on the real database 49,911 of 49,924 values are identical and the rest differ by one point of floating-point rounding. A few results:
+The CPCB AQI is re-implemented in SQL and tested against the Python implementation: on the real database 50,108 of 50,121 values are identical and the rest differ by one point of floating-point rounding. A few results:
 
 - **Sub-regions:** Gurugram had the highest average AQI since August (128) and Bahadurgarh the lowest (92).
 - **Hotspots:** at the same hour, Sector-125 (Noida) ran about 31 points above the city average and Shadipur about 43 below.
 - **Outage detection:** 28 stations stopped reporting together for 83 hours, which points to a data-feed problem rather than broken monitors.
+
+## ML forecast
+
+A trained model that predicts the city-mean AQI **6, 12 and 24 hours ahead**, evaluated honestly against simple baselines. The React dashboard's **ML Forecast** tab shows the latest prediction, which the pipeline writes to `data/ml_forecast.json` after each collection run (if that step fails, the tab shows the last file or "not available yet"). The dashboard's **Forecast** tab still shows the statistical baseline.
+
+Back-test on the last 28 days (four consecutive 7-day test windows, 320 to 371 hourly forecasts per horizon). Models marked "+ weather" also use Open-Meteo weather features. Errors are in AQI points, lower is better:
+
+| Method | 6 h MAE | 12 h MAE | 24 h MAE |
+|---|---|---|---|
+| "Same as now" (persistence) | 15.7 | 29.5 | 54.9 |
+| Statistical baseline (`src/forecast.py`) | 22.5 | 40.0 | 66.0 |
+| Random forest | 12.6 | 24.6 | 49.2 |
+| Gradient boosting | 12.3 | 25.0 | 51.8 |
+| Ridge regression | **10.3** | 22.0 | 45.9 |
+| Random forest + weather | 11.7 | 23.0 | 47.7 |
+| Gradient boosting + weather | 11.5 | 22.3 | 44.9 |
+| Ridge regression + weather | 11.0 | **21.1** | **41.1** |
+
+**Effect of weather** (best model with weather vs best model without, same 28-day back-test): at 6 hours weather did not improve the back-test (MAE 10.3 to 11.0, 6.7% higher). At 12 hours it lowered the MAE from 22.0 to 21.1 (4.3%) and at 24 hours from 45.9 to 41.1 (10.4%). The 12-hour change is small enough to be within noise. Possible reasons for the weak result: weather comes from a single point in central Delhi, and the test is only 28 days. The saved models follow the best result per horizon: ridge without weather at 6 hours, ridge with weather at 12 and 24 hours.
+
+![Forecast error by method and horizon, and the 24-hour forecast over the last test week](docs/ml_forecast.png)
+
+**What the results say** (run on data up to 2 Nov 2026; full tables in [`docs/ML_RESULTS.md`](docs/ML_RESULTS.md))
+
+- On a 28-day back-test (4 rolling 7-day windows), ridge regression without weather had 35%, 25% and 16% lower error than "same as now" at 6, 12 and 24 hours. With only four windows, small differences are within noise.
+- The tree models did not beat the simple linear model. With about 1,900 hourly values (three months), the simpler model generalises better.
+- In this 28-day back-test, the statistical forecast in `src/forecast.py` had a higher error than "same as now". The test weeks were a period of rising pollution, which a forecast that fades back towards the recent average handles badly. (The React dashboard's forecast is a separate implementation with its own back-test on the Forecast tab.)
+- **Only hours with enough stations count.** An hour is used as a "city" value only when at least half the usual number of stations reported it. This removes the half-collected newest hour and the 23 to 27 Oct outage, when a single station would otherwise have been the "city". Without this filter the models were trained and scored on that noise.
+- The biggest misses are sudden, weather-driven swings, for example the drop in the daily city mean from 237 on 29 Oct to 83 on 30 Oct. Weather features helped at 12 and 24 hours but not at 6 hours (see above), so they explain only part of these swings.
+
+**How it is tested**
+
+- **No look-ahead.** Every feature at hour t uses only data up to t (unit-tested by changing the future and checking the features do not move).
+- **Time-ordered folds.** Models are trained on the past only, with a gap of one horizon before each test window. Random splits would leak the future.
+- **Predict the change, not the level.** AQI rose sharply from August to November, and tree models cannot predict outside the range they were trained on, so the models predict the change from the current AQI.
+- **Fixed settings.** Model settings were chosen in advance and not tuned on the test windows.
+
+**Limits:** a 28-day test period is short and its windows are correlated, so small differences between models are within noise. The with-weather numbers use the weather stored for the target hour, not a forecast issued at prediction time, so they are probably optimistic. There are no prediction intervals yet. Saved models (`data/models/`) belong to the pinned scikit-learn version: `train_forecast.py` writes `data/models/meta.json` (scikit-learn and NumPy versions, training date, rows used, feature names), and the API, `--predict` and the dashboard export refuse to use models trained with a different scikit-learn version. The API then returns `503` with "Models were trained with scikit-learn X; run python src/train_forecast.py to retrain." Models without a `meta.json` are refused the same way.
+
+```bash
+pip install -r requirements-ml.txt
+python src/fetch_weather.py          # optional: weather features -> data/weather.csv (needs internet)
+python src/train_forecast.py         # evaluate, write docs/ML_RESULTS.md, save models to data/models/
+python src/train_forecast.py --predict   # latest forecasts from the saved models
+python src/export_json.py --ml-only      # write data/ml_forecast.json for the dashboard tab
+```
+
+### Forecast API
+
+`api.py` is a small Flask API that serves the latest AQI and the saved model's forecast as JSON.
+
+```bash
+python api.py                                   # http://127.0.0.1:5000
+curl "http://127.0.0.1:5000/api/forecast?horizon=6"
+```
+
+| Endpoint | Returns |
+|---|---|
+| `GET /health` | status, time of the newest reading, which models are available |
+| `GET /api/latest` | latest AQI and category per station, plus the basin-wide figure |
+| `GET /api/forecast?horizon=6\|12\|24` | predicted city AQI, its category, the model used and its back-test error |
+
+Bad input returns `400`. A missing model, models trained with another scikit-learn version, or stale data return `503`, each with a message saying what to do.
 
 ## Architecture
 
@@ -95,7 +159,7 @@ flowchart LR
 ### What one automated run does
 
 1. Check out the repo and set up Python 3.11.
-2. Install dependencies and **run the 73 tests** (a failing test stops the run before any data changes).
+2. Install dependencies and **run the core tests** (a failing test stops the run before any data changes).
 3. Optionally backfill history (manual runs only).
 4. Collect the last 48 hours from OpenAQ, with the Open-Meteo fallback if needed.
 5. Export the last 14 days to `data/readings.json` for the web dashboard.
@@ -137,34 +201,35 @@ flowchart LR
 | Layer | Tools |
 |---|---|
 | Data collection | Python 3.11, requests, OpenAQ API v3, Open-Meteo API |
-| Processing and analysis | pandas, NumPy, SciPy (Welch's t-test, Pearson correlation); SQL (SQLite window functions and CTEs) |
+| Processing and analysis | pandas, NumPy, SciPy (Welch's t-test, Pearson correlation); SQL (SQLite window functions and CTEs); scikit-learn (ML forecast); Flask (JSON API) |
 | Storage | SQLite |
 | Automation and CI | GitHub Actions (scheduled runs, pytest gate, bot commits) |
 | Web dashboard | React 19, TypeScript, Vite, Tailwind CSS, Recharts, Leaflet with OpenStreetMap tiles |
 | Python dashboard | Streamlit, Plotly |
 | Hosting | Vercel (React), GitHub (data) |
-| Testing | pytest, 73 offline tests with mocked APIs |
+| Testing | pytest, 117 offline tests with mocked APIs |
 
 ## Key findings
 
-All numbers come from the pipeline's own data and the same CPCB code the dashboard uses (`src/analysis.py`).
+All numbers come from the pipeline's own data and the same CPCB code the dashboards use (`src/analysis.py`). Run `python src/key_findings.py` to reproduce every figure below. Data up to **1 Nov 2026, 22:00 IST**; the numbers move as new data arrives.
 
-**Since August (1 Aug to 1 Nov 2026, about 49,900 station-hours with a valid AQI)**
+**Since August (2 Aug to 1 Nov 2026, about 50,100 station-hours with a valid AQI)**
 
-- Average AQI rose from **78 in August** and **91 in September** to **162 in October**. The first day of November averaged **230**. (Averages are weighted by station-hours, so Delhi's 22 stations dominate.)
-- Over the whole period **10%** of station-hours were Poor or worse. In the most recent two weeks that share was about **49%**.
+- Average AQI rose from **78 in August** and **91 in September** to **162 in October**. 1 November (to 22:00) averaged **247**. (Averages are weighted by station-hours, so Delhi's 22 stations dominate.)
+- Over the whole period **10%** of station-hours were Poor or worse. In the most recent two weeks that share was about **50%**.
 - The worst day with good coverage was **21 Oct** (city mean AQI 262 across 28 stations); the cleanest was **27 Sep** (AQI 44).
-- City AQI fell from **238 on 29 Oct to 81 on 30 Oct**, then climbed back to 230 by 1 Nov. Daily swings are large, so a single reading can mislead.
-- Station averages over the period ranged from **67 (Shadipur)** to **141 (Sector-125, Noida)**.
+- City AQI fell from **238 on 29 Oct to 81 on 30 Oct**, then climbed back to 247 by 1 Nov. Daily swings are large, so a single reading can mislead.
+- Station averages over the period ranged from **67 (Shadipur)** to **142 (Sector-125, Noida)**.
 - Coverage was 15 or more stations on 86 of 92 days. From 23 Oct 20:00 to 27 Oct 08:00 IST, 28 stations stopped reporting at the same time in the OpenAQ feed (found with SQL query Q09), so 24 to 26 Oct are left out of city comparisons.
 
-**Latest snapshot (1 Nov 2026, 13:00 IST)**
+**Latest snapshot (1 Nov 2026, 22:00 IST)**
 
-- **Basin-wide AQI: 265 (Poor)**, averaged over the 25 stations that reported in the last 3 hours.
-- **By area:** Delhi 302 (Very Poor), Noida 249, Bahadurgarh 249, Gurugram 137, Faridabad 114.
-- **Most polluted:** Jahangirpuri, Delhi (AQI 379). **Cleanest:** Sector 30, Faridabad (AQI 68). A 311-point gap inside one metro region, which a single "Delhi AQI" figure hides.
-- **Daily rhythm:** city-wide PM2.5 is highest near 00:00 IST (about 112 µg/m³) and lowest near 15:00 IST (about 59 µg/m³).
-- **Weekday vs weekend:** no significant difference yet (Welch's t-test, p = 0.587, 7 weekdays vs 2 weekend days), which mainly reflects how few days are available.
+- **Basin-wide AQI: 288 (Poor)**, averaged over the 24 stations that reported in the last 3 hours.
+- **By area:** Delhi 322 (Very Poor), Noida 288, Gurugram 170, Faridabad 120.
+- **Most polluted:** Jahangirpuri, Delhi (AQI 404, Severe). **Cleanest:** Sector 30, Faridabad (AQI 77). A 327-point gap inside one metro region, which a single "Delhi AQI" figure hides.
+- **Daily rhythm (last 14 days):** city-wide PM2.5 is highest around 21:00 IST (about 112 µg/m³) and lowest around 15:00 IST (about 63 µg/m³).
+- **Weekday vs weekend:** weekdays averaged 115 and weekends 104, but the difference is **not statistically significant** (Welch's t-test on daily city means, p = 0.411, 65 weekdays vs 27 weekend days). It could be ordinary day-to-day variation such as weather.
+- **PM2.5 and NO₂** are only weakly correlated (r = 0.18 over about 31,000 hourly pairs).
 
 The **Diwali 2026 benchmark** (7 days before vs 7 days from 8 Nov) fills in automatically once enough days have been collected.
 
@@ -187,7 +252,10 @@ python src/backfill.py             # one-time, ~90 days of history (a few minute
 python src/collect.py              # the regular job (last 48 hours)
 python src/export_json.py          # JSON for the React dashboard
 python sql/run.py                  # the 15 SQL analytics queries
-pytest                             # 73 tests should pass
+python src/key_findings.py         # the numbers quoted in this README
+python src/train_forecast.py       # optional: ML forecast (pip install -r requirements-ml.txt first)
+python api.py                      # optional: JSON API for the forecast
+pytest                             # 117 tests should pass (with requirements-ml.txt installed)
 ```
 
 **Run the dashboards locally**
@@ -279,8 +347,7 @@ By default the React app reads live data from this repo. To point it at your own
 ## Future work
 
 - Alerts (email or Telegram) when AQI crosses "Very Poor".
-- A trained forecasting model (for example gradient boosting) for next-day AQI.
-- Weather features (wind, temperature, boundary-layer height) to explain pollution spikes.
+- Add prediction intervals, and test the weather features with forecasts that were really issued at prediction time.
 - Stubble-burning fire counts (NASA FIRMS) as an explanatory variable.
 - Move long-term history out of git (for example Parquet files in GitHub Releases) as the database grows.
 
@@ -308,17 +375,23 @@ delhi-aqi-pipeline/
 │   ├── find_station.py     # helper to look up stations near a point
 │   ├── collect.py          # regular collector (last 48 h)
 │   ├── backfill.py         # one-time history pull
-│   ├── export_json.py      # SQLite -> data/readings.json for the web app
+│   ├── export_json.py      # SQLite -> data/readings.json and data/ml_forecast.json for the web app
 │   ├── analysis.py         # CPCB AQI and insight functions
-│   └── forecast.py         # 24-hour statistical forecast
+│   ├── forecast.py         # 24-hour statistical forecast (baseline)
+│   ├── ml_forecast.py      # ML forecast: features, time-ordered evaluation, models
+│   ├── train_forecast.py   # train, evaluate, write docs/ML_RESULTS.md, save models
+│   ├── fetch_weather.py    # Open-Meteo weather for the ML forecast
+│   └── key_findings.py     # reproduces the README "Key findings" numbers
 ├── sql/                    # 15 analytical SQL queries, shared views and a read-only runner
-├── tests/                  # 73 offline tests (APIs mocked, synthetic data)
+├── tests/                  # 117 offline tests (APIs mocked, synthetic data; the ML ones need requirements-ml.txt)
 ├── data/                   # aqi.db, stations.json, readings.json (committed)
 ├── web/                    # React + TypeScript dashboard (deployed on Vercel)
 │   └── src/                # components/, lib/ (AQI, stats, forecast), views/ (one file per tab)
 ├── docs/                   # dashboard screenshots used in this README
 ├── app.py                  # Streamlit dashboard
+├── api.py                  # Flask JSON API (latest AQI, ML forecast)
 ├── requirements.txt
+├── requirements-ml.txt     # extra packages for the ML forecast and the API only
 └── README.md
 ```
 

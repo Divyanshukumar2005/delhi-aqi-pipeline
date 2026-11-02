@@ -312,3 +312,31 @@ export function categoryShare(stations: Station[]) {
   for (const s of stations) for (const r of s.readings) if (r.aqi !== null) { counts[r.cat.id]++; total++; }
   return { counts, total };
 }
+
+// ---------- ML forecast (data/ml_forecast.json, written by src/export_json.py) ----------
+
+export interface MlHorizon {
+  h: number;
+  predicted_aqi: number;
+  category: string;
+  model: string;
+  /** Mean absolute error of this model on the back-test (AQI points). */
+  backtest_mae: number;
+  /** Same back-test, for "same as now". Missing in files written before this field existed. */
+  persistence_mae?: number;
+}
+export type MlForecast =
+  | { available: true; generated_at: string; origin_ts: string; current_aqi: number; backtest?: string; horizons: MlHorizon[] }
+  | { available: false; generated_at?: string; reason?: string };
+
+/** Latest ML forecast, or null when the file does not exist yet or cannot be read. Never throws. */
+export async function loadMlForecast(): Promise<MlForecast | null> {
+  try {
+    const { data } = await fetchJson<MlForecast>('ml_forecast.json');
+    if (!data || typeof data !== 'object' || typeof data.available !== 'boolean') return null;
+    if (data.available && !Array.isArray(data.horizons)) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}

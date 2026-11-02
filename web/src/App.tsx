@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity, BookOpen, Download, ExternalLink, Grid3x3, Lightbulb, Loader2, MapPin, Moon, Sparkles, Sun, TrendingUp, Users, Wind,
+  Activity, BookOpen, BrainCircuit, Download, ExternalLink, Grid3x3, Lightbulb, Loader2, MapPin, Moon, Sparkles, Sun, TrendingUp, Users, Wind,
 } from 'lucide-react';
 import { AREAS, loadDataset, type Dataset } from './lib/data';
 import { buildModel, type AreaFilter } from './lib/model';
@@ -11,6 +11,7 @@ import { HeatmapTab } from './views/HeatmapTab';
 import { TrendsTab } from './views/TrendsTab';
 import { StationsTab } from './views/StationsTab';
 import { ForecastTab } from './views/ForecastTab';
+import { MlForecastTab } from './views/MlForecastTab';
 import { InsightsTab } from './views/InsightsTab';
 import { MethodTab } from './views/MethodTab';
 
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'trends', label: 'Trends', icon: TrendingUp },
   { id: 'stations', label: 'Stations', icon: Users },
   { id: 'forecast', label: 'Forecast', icon: Sparkles },
+  { id: 'mlforecast', label: 'ML Forecast', icon: BrainCircuit },
   { id: 'insights', label: 'Insights', icon: Lightbulb },
   { id: 'method', label: 'Method', icon: BookOpen },
 ] as const;
@@ -145,7 +147,7 @@ export default function App() {
       </nav>
 
       <main className="mx-auto max-w-[1320px] px-4 pb-16 pt-6 lg:px-8">
-        {tab !== 'method' && tab !== 'stations' && (
+        {tab !== 'method' && tab !== 'stations' && tab !== 'mlforecast' && (
           <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by area">
             <span className="mr-1 text-[13px] muted">Area</span>
             {(['All', ...AREAS] as AreaFilter[]).map((a) => (
@@ -160,6 +162,7 @@ export default function App() {
         {tab === 'trends' && <TrendsTab m={m} />}
         {tab === 'stations' && <StationsTab m={buildModel(data.stations, 'All')} all={data.stations} ids={compare} setIds={setCompare} />}
         {tab === 'forecast' && <ForecastTab m={m} />}
+        {tab === 'mlforecast' && <MlForecastTab />}
         {tab === 'insights' && <InsightsTab m={m} onCsv={downloadCsv} />}
         {tab === 'method' && <MethodTab />}
       </main>
