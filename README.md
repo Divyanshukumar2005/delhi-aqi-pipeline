@@ -5,14 +5,14 @@
 ![Data updated](https://img.shields.io/github/last-commit/Divyanshukumar2005/delhi-aqi-pipeline?label=data%20updated)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![React](https://img.shields.io/badge/react-19-61dafb)
-![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 **An automated data pipeline that collects hourly air-quality readings from 30 government monitoring stations across Delhi-NCR, computes India's official CPCB AQI, and serves it on a live dashboard. It runs three times a day with no manual steps.**
 
 ### 🔗 [Open the live dashboard](https://delhi-aqi-pipeline-g3tm.vercel.app/)
 
-| **30** | **54,000+** | **3x per day** | **117** |
+| **30** | **58,000+** | **3x per day** | **120** |
 |:---:|:---:|:---:|:---:|
 | government monitoring stations | hourly readings stored | automated runs, no manual steps | tests passing in CI |
 
@@ -29,10 +29,10 @@ Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbou
 |---|---|
 | **Coverage** | 30 CPCB / DPCC / IMD / state-board monitors in Delhi, Gurugram, Noida, Faridabad and Bahadurgarh |
 | **Pollutants** | PM2.5, PM10, NO₂, O₃ (hourly) |
-| **Data volume** | 54,000+ hourly readings and 90+ days of history (from 1 Aug 2026), growing three times a day |
+| **Data volume** | 58,000+ hourly readings and 100+ days of history (from 1 Aug 2026), growing three times a day |
 | **Automation** | GitHub Actions at 08:00, 14:00 and 20:00 IST; tests run before every collection |
 | **AQI method** | CPCB National AQI from 24-hour rolling PM2.5 / PM10 averages |
-| **Quality** | 117 automated tests, idempotent loads, automatic fallback data source |
+| **Quality** | 120 automated tests, idempotent loads, automatic fallback data source |
 
 ## Dashboard tour
 
@@ -44,7 +44,7 @@ Air quality in Delhi-NCR changes by the hour and differs a lot from one neighbou
 | 24-hour forecast | Insights |
 |---|---|
 | ![Next 24 hours forecast with an 80 percent range](docs/forecast.png) | ![Daily rhythm, station spread, weekday vs weekend test and Diwali benchmark](docs/insights.png) |
-| **Forecast.** A simple baseline (recent level plus the typical hour-of-day pattern) with an 80% range, back-tested against a "stays the same" baseline. | **Insights.** Findings computed live from the data, including a Welch's t-test for weekday vs weekend and a Diwali before/after benchmark. |
+| **Forecast.** A simple baseline (recent level plus the typical hour-of-day pattern) with an 80% range, back-tested against a "stays the same" baseline. | **Insights.** Findings computed live from the data, including a Welch's t-test for weekday vs weekend and a Diwali night benchmark. |
 
 The dashboard also has a **Heatmap** tab (city by day and hour, and station by hour), a **Stations** tab for side-by-side comparison, an **ML Forecast** tab with the trained model's 6, 12 and 24 hour predictions and its back-test error, and a **Method** tab that documents the pipeline, the AQI formula and the known limits.
 
@@ -62,17 +62,17 @@ The dashboard also has a **Heatmap** tab (city by day and hour, and station by h
 
 ## SQL analytics
 
-The [`sql/`](sql/README.md) folder holds **15 analytical queries** that run directly on `data/aqi.db`, each with the business question at the top. They cover trends, rankings, sub-region comparisons, hotspots, outage detection, consecutive-day pollution episodes and a Diwali before/after benchmark, using window functions (`RANK`, `NTILE`, `LAG`, moving averages), CTEs, gaps-and-islands and pivots.
+The [`sql/`](sql/README.md) folder holds **15 analytical queries** that run directly on `data/aqi.db`, each with the business question at the top. They cover trends, rankings, sub-region comparisons, hotspots, outage detection, consecutive-day pollution episodes and a Diwali night benchmark, using window functions (`RANK`, `NTILE`, `LAG`, moving averages), CTEs, gaps-and-islands and pivots.
 
 ```bash
 python sql/run.py                  # run all 15 queries
 python sql/run.py --only 3 8 9     # run selected queries
 ```
 
-The CPCB AQI is re-implemented in SQL and tested against the Python implementation: on the real database 50,108 of 50,121 values are identical and the rest differ by one point of floating-point rounding. A few results:
+The CPCB AQI is re-implemented in SQL and tested against the Python implementation: on the real database 54,110 of 54,123 values are identical and the other 13 differ by one point of floating-point rounding. A few results:
 
-- **Sub-regions:** Gurugram had the highest average AQI since August (128) and Bahadurgarh the lowest (92).
-- **Hotspots:** at the same hour, Sector-125 (Noida) ran about 31 points above the city average and Shadipur about 43 below.
+- **Sub-regions:** Gurugram had the highest average AQI since August (145) and Bahadurgarh the lowest (111).
+- **Hotspots:** at the same hour, Sonia Vihar (Delhi) ran about 27 points above the city average and Shadipur about 43 below.
 - **Outage detection:** 28 stations stopped reporting together for 83 hours, which points to a data-feed problem rather than broken monitors.
 
 ## ML forecast
@@ -207,31 +207,43 @@ flowchart LR
 | Web dashboard | React 19, TypeScript, Vite, Tailwind CSS, Recharts, Leaflet with OpenStreetMap tiles |
 | Python dashboard | Streamlit, Plotly |
 | Hosting | Vercel (React), GitHub (data) |
-| Testing | pytest, 117 offline tests with mocked APIs |
+| Testing | pytest, 120 offline tests with mocked APIs |
 
 ## Key findings
 
-All numbers come from the pipeline's own data and the same CPCB code the dashboards use (`src/analysis.py`). Run `python src/key_findings.py` to reproduce every figure below. Data up to **1 Nov 2026, 22:00 IST**; the numbers move as new data arrives.
+All numbers come from the pipeline's own data and the same CPCB code the dashboards use (`src/analysis.py`). Run `python src/key_findings.py` to reproduce every figure below. Snapshot: data up to **10 Nov 2026, 08:00 IST**. The pipeline keeps adding data three times a day, so a fresh run will show slightly different numbers.
 
-**Since August (2 Aug to 1 Nov 2026, about 50,100 station-hours with a valid AQI)**
+**Since August (2 Aug to 10 Nov 2026, about 54,100 station-hours with a valid AQI)**
 
-- Average AQI rose from **78 in August** and **91 in September** to **162 in October**. 1 November (to 22:00) averaged **247**. (Averages are weighted by station-hours, so Delhi's 22 stations dominate.)
-- Over the whole period **10%** of station-hours were Poor or worse. In the most recent two weeks that share was about **50%**.
-- The worst day with good coverage was **21 Oct** (city mean AQI 262 across 28 stations); the cleanest was **27 Sep** (AQI 44).
-- City AQI fell from **238 on 29 Oct to 81 on 30 Oct**, then climbed back to 247 by 1 Nov. Daily swings are large, so a single reading can mislead.
-- Station averages over the period ranged from **67 (Shadipur)** to **142 (Sector-125, Noida)**.
-- Coverage was 15 or more stations on 86 of 92 days. From 23 Oct 20:00 to 27 Oct 08:00 IST, 28 stations stopped reporting at the same time in the OpenAQ feed (found with SQL query Q09), so 24 to 26 Oct are left out of city comparisons.
+- Average AQI rose from **78 in August** and **91 in September** to **162 in October** and **359 in November so far** (1 to 10 Nov). Averages are weighted by station-hours, so Delhi's 22 stations dominate.
+- Over the whole period **17%** of station-hours were Poor or worse. In the most recent two weeks that share was about **75%**.
+- The worst day with good coverage was **9 Nov** (city mean AQI 413 across 24 stations, Severe); the cleanest was **27 Sep** (AQI 44).
+- City AQI fell from **238 on 29 Oct to 81 on 30 Oct**, then climbed to **251 on 1 Nov** and stayed between 321 and 413 from 2 to 9 Nov. Daily swings are large, so a single reading can mislead.
+- Station averages over the period ranged from **67 (Shadipur)** to **162 (Jahangirpuri)**.
+- Coverage was 15 or more stations on 95 of 101 days. From 23 Oct 20:00 to 27 Oct 08:00 IST, 28 stations stopped reporting at the same time in the OpenAQ feed (found with SQL query Q09), so 24 to 26 Oct are left out of city comparisons.
 
-**Latest snapshot (1 Nov 2026, 22:00 IST)**
+**Latest snapshot (10 Nov 2026, 08:00 IST)**
 
-- **Basin-wide AQI: 288 (Poor)**, averaged over the 24 stations that reported in the last 3 hours.
-- **By area:** Delhi 322 (Very Poor), Noida 288, Gurugram 170, Faridabad 120.
-- **Most polluted:** Jahangirpuri, Delhi (AQI 404, Severe). **Cleanest:** Sector 30, Faridabad (AQI 77). A 327-point gap inside one metro region, which a single "Delhi AQI" figure hides.
-- **Daily rhythm (last 14 days):** city-wide PM2.5 is highest around 21:00 IST (about 112 µg/m³) and lowest around 15:00 IST (about 63 µg/m³).
-- **Weekday vs weekend:** weekdays averaged 115 and weekends 104, but the difference is **not statistically significant** (Welch's t-test on daily city means, p = 0.411, 65 weekdays vs 27 weekend days). It could be ordinary day-to-day variation such as weather.
-- **PM2.5 and NO₂** are only weakly correlated (r = 0.18 over about 31,000 hourly pairs).
+- **Basin-wide AQI: 332 (Very Poor)**, averaged over the 25 stations that reported in the last 3 hours.
+- **By area:** Delhi 341, Bahadurgarh 323, Noida 323, Faridabad 312, Gurugram 290.
+- **Most polluted:** Pusa, Delhi - IMD (AQI 418, Severe). **Cleanest:** Vikas Sadan, Gurugram (AQI 239). A 179-point gap inside one metro region, which a single "Delhi AQI" figure hides.
+- **Daily rhythm (last 14 days):** city-wide PM2.5 is highest around 22:00 IST (about 201 µg/m³) and lowest around 15:00 IST (about 102 µg/m³).
+- **Weekday vs weekend:** weekdays averaged 140 and weekends 124, but the difference is **not statistically significant** (Welch's t-test on daily city means, p = 0.445, 72 weekdays vs 29 weekend days). It could be ordinary day-to-day variation such as weather.
+- **PM2.5 and NO₂** are only weakly correlated (r = 0.15 over about 33,400 hourly pairs).
 
-The **Diwali 2026 benchmark** (7 days before vs 7 days from 8 Nov) fills in automatically once enough days have been collected.
+**Diwali 2026 night benchmark.** It compares raw hourly PM2.5 from 8 Nov 18:00 to 9 Nov 12:00 IST with the same clock hours on the 7 nights before (6 nights had enough data; nights with a data gap are skipped). City-mean PM2.5 went from about **232 to 356 µg/m³ (+53%)**, with a worst city hour near 578 and a worst single station at 993 µg/m³. It is descriptive: wind and weather also change from night to night. The older 7-days-before vs 7-days-after daily-AQI comparison fills in automatically once 4 post-festival days exist.
+
+## Peak & live lens
+
+The CPCB AQI uses 24-hour averages and is capped at 500, so a short extreme spike (for example the night after Diwali 2026, with raw PM2.5 up to about 990 µg/m³) barely moves it. Both dashboards therefore have a **Peak & live lens** that shows, hour by hour:
+
+| Label | What it is |
+|---|---|
+| **CPCB AQI (24h avg)** | The standard CPCB method: 24-hour rolling PM average, at least 16 valid hours, capped at 500. |
+| **Hourly AQI** | The same formula on 1-hour PM values, no smoothing, still capped at 500. |
+| **Uncapped AQI** | Continues the CPCB Severe-band slope past 500, where CPCB itself stops. Use it to compare spike size, not as a CPCB category. Private platforms show similar large numbers, but their exact method differs, so values will not match. |
+
+The lens also shows raw PM2.5 peaks and **how many stations reported** in each hour. At the Diwali peak only 11 stations reported PM2.5 against a normal 25, and stations without 16 valid hours get no 24h AQI at all.
 
 ## Quick start
 
@@ -255,7 +267,7 @@ python sql/run.py                  # the 15 SQL analytics queries
 python src/key_findings.py         # the numbers quoted in this README
 python src/train_forecast.py       # optional: ML forecast (pip install -r requirements-ml.txt first)
 python api.py                      # optional: JSON API for the forecast
-pytest                             # 117 tests should pass (with requirements-ml.txt installed)
+pytest                             # 120 tests should pass (with requirements-ml.txt installed)
 ```
 
 **Run the dashboards locally**
@@ -340,6 +352,7 @@ By default the React app reads live data from this repo. To point it at your own
 - **Severe band:** CPCB only states "250+" and "430+"; the same band width as Very Poor is assumed and the AQI is capped at 500.
 - **City figure:** the mean AQI of stations that reported within the last 3 hours.
 - **Diwali window:** "before" is the 7 days up to 7 Nov 2026 and "after" is 8 to 14 Nov (Diwali night counts as after); shown only when each side has enough days.
+- **Diwali night benchmark:** raw hourly PM2.5 from 18:00 on Diwali day to 12:00 the next day vs the same clock hours on each of the 7 days before; a city hour needs at least 5 stations, a night needs at least 12 valid hours, and at least 4 baseline nights are required. Python (`analysis.diwali_night_benchmark`), SQL (Q15) and the React app (`diwaliNight`) use the same rules.
 - **Weekday vs weekend test** uses daily city averages because consecutive hours are not independent.
 
 </details>
@@ -383,7 +396,7 @@ delhi-aqi-pipeline/
 │   ├── fetch_weather.py    # Open-Meteo weather for the ML forecast
 │   └── key_findings.py     # reproduces the README "Key findings" numbers
 ├── sql/                    # 15 analytical SQL queries, shared views and a read-only runner
-├── tests/                  # 117 offline tests (APIs mocked, synthetic data; the ML ones need requirements-ml.txt)
+├── tests/                  # 120 offline tests (APIs mocked, synthetic data; the ML ones need requirements-ml.txt)
 ├── data/                   # aqi.db, stations.json, readings.json (committed)
 ├── web/                    # React + TypeScript dashboard (deployed on Vercel)
 │   └── src/                # components/, lib/ (AQI, stats, forecast), views/ (one file per tab)

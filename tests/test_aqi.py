@@ -117,3 +117,49 @@ def test_latest_by_station_ignores_stale_stations():
     assert list(out["station"]) == ["Active"]
     both = analysis.latest_by_station(analysis.prepare(df), max_age_hours=None)
     assert len(both) == 2
+
+
+# ---------------------------------------------------------------- peak lens
+def test_extended_matches_cpcb_below_cap_and_exceeds_it_above():
+    assert analysis.compute_aqi_extended(150, None) == analysis.compute_aqi(150, None)
+    assert analysis.compute_aqi(993, None) == 500                 # CPCB value stays capped
+    assert analysis.compute_aqi_extended(993, None) > 500         # uncapped keeps climbing
+    assert analysis.compute_aqi_extended(380, None) == 500        # continuous at the CPCB top
+
+
+def test_peak_lens_exposes_spike_and_coverage():
+    ts = pd.date_range("2026-11-08 20:00", periods=30, freq="h", tz=config.IST)
+    rows = []
+    for i, t in enumerate(ts):
+        for sid in ("a", "b", "c"):
+            if i == 25 and sid != "a":            # at the spike two stations go offline
+                continue
+            rows.append({"station_id": sid, "station": sid, "ts": t, "source": "openaq",
+                         "pm25": 900.0 if i == 25 else 100.0, "pm10": None, "no2": None, "o3": None})
+    lens = analysis.peak_lens(analysis.prepare(pd.DataFrame(rows)), hours=30)
+    s = analysis.peak_summary(lens)
+    assert s["pm25_max"] == 900.0
+    assert s["aqi_hourly"] == 500.0 and s["aqi_ext_max"] > 500
+    assert s["stations_at_peak"] == 1 and s["stations_typical"] == 3
+
+
+def test_diwali_night_benchmark_like_for_like():
+    ts = pd.date_range("2026-10-25 00:00", "2026-11-10 08:00", freq="h", tz=config.IST)
+    rows = []
+    for t in ts:
+        in_night = pd.Timestamp("2026-11-08 18:00", tz=config.IST) <= t < pd.Timestamp("2026-11-09 12:00", tz=config.IST)
+        gap = t.date() == pd.Timestamp("2026-11-03").date()          # one baseline day with no data
+        for sid in range(6):
+            if gap:
+                continue
+            rows.append({"station_id": str(sid), "station": f"s{sid}", "ts": t, "source": "openaq",
+                         "pm25": 300.0 if in_night else 100.0, "pm10": None, "no2": None, "o3": None})
+    res = analysis.diwali_night_benchmark(pd.DataFrame(rows))
+    assert res is not None
+    assert res["baseline_mean"] == 100.0 and res["event_mean"] == 300.0 and res["change_pct"] == 200.0
+    # the 3 Nov gap leaves only 6 valid hours in the window that opens on 2 Nov, so that window is skipped
+    assert res["baseline_days"] == 6 and res["skipped_days"] == ["2026-11-02"]
+    # festival night not collected yet -> no result instead of a made-up one
+    early = pd.DataFrame(rows)
+    early = early[early["ts"] < pd.Timestamp("2026-11-08 20:00", tz=config.IST)]
+    assert analysis.diwali_night_benchmark(early) is None

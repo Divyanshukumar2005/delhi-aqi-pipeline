@@ -1,6 +1,6 @@
 import { categoryOf, type Category } from './aqi';
 import {
-  AREAS, categoryShare, cityDaily, cityHourly, diurnal, type Area, type Station,
+  AREAS, categoryShare, cityDaily, cityHourly, diurnal, peakLens, type Area, type Station,
 } from './data';
 
 export type AreaFilter = 'All' | Area;
@@ -21,6 +21,7 @@ export function buildModel(all: Station[], area: AreaFilter) {
 
   const ticks = cityHourly(stations);
   const daily = cityDaily(ticks);
+  const lens = peakLens(stations);
   const dProfile = diurnal(stations);
   const withVal = dProfile.filter((d) => d.pm25 !== null) as { hour: number; pm25: number }[];
   const peak = withVal.length ? withVal.reduce((m, d) => (d.pm25 > m.pm25 ? d : m)) : null;
@@ -30,7 +31,7 @@ export function buildModel(all: Station[], area: AreaFilter) {
   const pctPoor = share.total ? (share.counts.slice(3).reduce((a, b) => a + b, 0) / share.total) * 100 : 0;
 
   return {
-    stations, reporting, ranked, cityAqi, cat, areaAvg, ticks, daily, dProfile, peak, clean, pm25Mean, share, pctPoor,
+    stations, reporting, ranked, cityAqi, cat, areaAvg, ticks, daily, lens, dProfile, peak, clean, pm25Mean, share, pctPoor,
     worst: ranked[0] ?? null,
     cleanest: ranked[ranked.length - 1] ?? null,
   };

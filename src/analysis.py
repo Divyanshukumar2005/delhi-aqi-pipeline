@@ -40,6 +40,26 @@ def compute_aqi(pm25_24h: float | None, pm10_24h: float | None) -> int | None:
     return int(min(math.floor(max(indices) + 0.5), config.AQI_MAX))
 
 
+def sub_index_extended(concentration: float | None, pollutant: str) -> float | None:
+    """Not a CPCB value: like sub_index, but above the top CPCB band it keeps going with the Severe band's slope.
+
+    CPCB stops at 500; private platforms (AQI.in etc.) show bigger numbers by extrapolating, which is why
+    their peaks differ so much from the CPCB ones. Never mix it with the CPCB AQI without a label.
+    """
+    if concentration is None or pd.isna(concentration) or concentration < 0:
+        return None
+    c_lo, c_hi, i_lo, i_hi = config.AQI_BREAKPOINTS[pollutant][-1]
+    if concentration <= c_hi:
+        return sub_index(concentration, pollutant)
+    return i_hi + (i_hi - i_lo) / (c_hi - c_lo) * (concentration - c_hi)
+
+
+def compute_aqi_extended(pm25: float | None, pm10: float | None) -> float | None:
+    """Uncapped AQI (not a CPCB value) from (usually 1-hour) PM values: the worst extended sub-index."""
+    indices = [i for i in (sub_index_extended(pm25, "pm25"), sub_index_extended(pm10, "pm10")) if i is not None]
+    return round(max(indices)) if indices else None
+
+
 def aqi_category(aqi: float | None) -> str | None:
     """CPCB category name for an AQI value."""
     if aqi is None or pd.isna(aqi):
@@ -63,7 +83,8 @@ def add_aqi(df: pd.DataFrame) -> pd.DataFrame:
     """
     if df.empty:
         return df.assign(pm25_24h=pd.Series(dtype=float), pm10_24h=pd.Series(dtype=float),
-                         aqi=pd.Series(dtype=float), category=pd.Series(dtype=object))
+                         aqi=pd.Series(dtype=float), category=pd.Series(dtype=object),
+                         aqi_hourly=pd.Series(dtype=float), aqi_ext=pd.Series(dtype=float))
     parts = []
     for _key, group in df.sort_values("ts").groupby(["station_id", "source"], sort=False):
         g = group.set_index("ts")
@@ -75,6 +96,12 @@ def add_aqi(df: pd.DataFrame) -> pd.DataFrame:
     out["aqi"] = [compute_aqi(a, b) for a, b in zip(out["pm25_24h"], out["pm10_24h"])]
     out["aqi"] = pd.to_numeric(out["aqi"], errors="coerce").astype(float)
     out["category"] = out["aqi"].map(aqi_category)
+    # "Right now" view: the same formula on the 1-hour PM values (no 24 h smoothing), still capped at 500 ...
+    out["aqi_hourly"] = pd.to_numeric([compute_aqi(a, b) for a, b in zip(out["pm25"], out["pm10"])],
+                                      errors="coerce").astype(float)
+    # ... and the uncapped one (see sub_index_extended).
+    out["aqi_ext"] = pd.to_numeric([compute_aqi_extended(a, b) for a, b in zip(out["pm25"], out["pm10"])],
+                                   errors="coerce").astype(float)
     return out
 
 
@@ -253,3 +280,91 @@ def station_area(station_name: str) -> str:
     if "bahadurgarh" in s:
         return "Bahadurgarh"
     return "Delhi"
+
+
+# ------------------------------------------------------- peak / coverage lens
+def peak_lens(df: pd.DataFrame, hours: int = 72) -> pd.DataFrame:
+    """Hour-by-hour city view of the last `hours` hours, built to show spikes the 24 h AQI smooths away.
+
+    Columns: stations_pm25 (how many stations reported PM2.5 - the coverage), pm25_mean, pm25_max (raw µg/m³),
+    aqi_24h (mean of the CPCB 24 h AQI), aqi_hourly (mean 1-hour AQI, cap 500) and aqi_ext_max
+    (highest uncapped 1-hour AQI). `df` must come from prepare()/add_aqi().
+    """
+    cols = ["stations_pm25", "pm25_mean", "pm25_max", "aqi_24h", "aqi_hourly", "aqi_ext_max"]
+    if df.empty or "aqi_hourly" not in df:
+        return pd.DataFrame(columns=cols)
+    end = df["ts"].max()
+    w = df[df["ts"] > end - pd.Timedelta(hours=hours)]
+    g = w.groupby("ts")
+    out = pd.DataFrame({
+        "stations_pm25": g["pm25"].count(),
+        "pm25_mean": g["pm25"].mean(),
+        "pm25_max": g["pm25"].max(),
+        "aqi_24h": g["aqi"].mean(),
+        "aqi_hourly": g["aqi_hourly"].mean(),
+        "aqi_ext_max": g["aqi_ext"].max(),
+    })
+    return out[cols]
+
+
+def peak_summary(lens: pd.DataFrame) -> dict | None:
+    """The worst hour in a peak_lens() table, plus how thin the coverage was compared with a normal hour."""
+    valid = lens.dropna(subset=["pm25_max"])
+    if valid.empty:
+        return None
+    ts = valid["pm25_max"].idxmax()
+    row = valid.loc[ts]
+    return {
+        "ts": ts,
+        "pm25_max": float(row["pm25_max"]),
+        "pm25_mean": float(row["pm25_mean"]),
+        "aqi_24h": None if pd.isna(row["aqi_24h"]) else float(row["aqi_24h"]),
+        "aqi_hourly": None if pd.isna(row["aqi_hourly"]) else float(row["aqi_hourly"]),
+        "aqi_ext_max": None if pd.isna(row["aqi_ext_max"]) else float(row["aqi_ext_max"]),
+        "stations_at_peak": int(row["stations_pm25"]),
+        "stations_typical": int(valid["stations_pm25"].median()),
+        "stations_min": int(valid["stations_pm25"].min()),
+    }
+
+
+def diwali_night_benchmark(df: pd.DataFrame) -> dict | None:
+    """Raw hourly PM2.5 on Diwali night vs the SAME clock hours (18:00-12:00 IST) on the 7 days before.
+
+    Comparing like with like removes the time-of-day cycle, and raw hourly PM2.5 is not smoothed by the 24 h
+    window, so the festival spike stays visible. A city hour needs >= MIN_STATIONS_FOR_CITY_HOUR stations; a
+    window needs >= MIN_HOURS_IN_NIGHT_WINDOW such hours, otherwise it is skipped (data gap) and listed.
+    Returns None while the festival night is not fully collected yet. Descriptive only: wind and weather
+    change from day to day, so this does not prove the festival caused the whole difference.
+    """
+    if df.empty or "pm25" not in df:
+        return None
+    city = df.dropna(subset=["pm25"]).groupby("ts")["pm25"].agg(["mean", "max", "count"])
+    city = city[city["count"] >= config.MIN_STATIONS_FOR_CITY_HOUR]
+    if city.empty:
+        return None
+
+    def window(day) -> pd.DataFrame:
+        start = pd.Timestamp(day).tz_localize(config.IST) + pd.Timedelta(hours=config.DIWALI_NIGHT_START_HOUR)
+        return city[(city.index >= start) & (city.index < start + pd.Timedelta(hours=config.DIWALI_NIGHT_HOURS))]
+
+    event = window(config.DIWALI_DATE)
+    if len(event) < config.MIN_HOURS_IN_NIGHT_WINDOW:
+        return None
+    base, skipped = [], []
+    for k in range(1, config.DIWALI_WINDOW_DAYS + 1):
+        day = config.DIWALI_DATE - timedelta(days=k)
+        w = window(day)
+        if len(w) >= config.MIN_HOURS_IN_NIGHT_WINDOW:
+            base.append(float(w["mean"].mean()))
+        else:
+            skipped.append(day.isoformat())
+    if len(base) < config.MIN_DAYS_PER_DIWALI_SIDE:
+        return None
+    b, e = float(np.mean(base)), float(event["mean"].mean())
+    peak_ts = event["mean"].idxmax()
+    return {
+        "baseline_mean": b, "event_mean": e, "change_pct": (e - b) / b * 100 if b else float("nan"),
+        "peak_city_mean": float(event["mean"].max()), "peak_city_ts": peak_ts,
+        "peak_station": float(event["max"].max()), "baseline_days": len(base), "skipped_days": skipped,
+        "event_hours": len(event), "min_stations_event": int(event["count"].min()),
+    }

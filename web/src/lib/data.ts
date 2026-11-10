@@ -1,4 +1,4 @@
-import { calculateAqi, categoryOf, POOR_OR_WORSE, type Category } from './aqi';
+import { calculateAqi, calculateAqiExt, categoryOf, POOR_OR_WORSE, type Category } from './aqi';
 import { istDate, istHour } from './time';
 
 export type Area = 'Delhi' | 'Gurugram' | 'Noida' | 'Faridabad' | 'Bahadurgarh';
@@ -25,7 +25,9 @@ export interface Reading {
   pm10: number | null;
   no2: number | null;
   o3: number | null;
-  aqi: number | null;
+  aqi: number | null; // CPCB AQI: 24 h rolling mean, capped at 500
+  aqiNow: number | null; // same formula on the 1-hour PM values (no smoothing), capped at 500
+  aqiExt: number | null; // uncapped 1-hour AQI (not a CPCB value)
   cat: Category;
 }
 
@@ -133,6 +135,8 @@ function buildReadings(raw: RawReading[]): Reading[] {
       no2: toNum(sorted[i].no2),
       o3: toNum(sorted[i].o3),
       aqi,
+      aqiNow: calculateAqi(pm25s[i], pm10s[i]),
+      aqiExt: calculateAqiExt(pm25s[i], pm10s[i]),
       cat: categoryOf(aqi),
     });
   }
@@ -223,6 +227,74 @@ export function cityHourly(stations: Station[]): CityTick[] {
       pm25: mean(b.rs, 'pm25'), pm10: mean(b.rs, 'pm10'), no2: mean(b.rs, 'no2'), o3: mean(b.rs, 'o3'),
       n: b.aqis.length,
     }));
+}
+
+export interface LensRow { t: number; n: number; pm25Mean: number | null; pm25Max: number | null; h24: number | null; hourly: number | null; extMax: number | null }
+
+/** Hour-by-hour city view of the last `hours` hours: raw PM2.5, 1-hour AQI, uncapped AQI and how many stations reported. */
+export function peakLens(stations: Station[], hours = 72): LensRow[] {
+  const all = stations.flatMap((s) => s.readings);
+  if (!all.length) return [];
+  const end = Math.max(...all.map((r) => r.t));
+  const buckets = new Map<number, Reading[]>();
+  for (const r of all) {
+    if (r.t <= end - hours * 3600 * 1000) continue;
+    if (!buckets.has(r.t)) buckets.set(r.t, []);
+    buckets.get(r.t)!.push(r);
+  }
+  const nn = (v: (number | null)[]) => v.filter((x): x is number => x !== null);
+  return [...buckets.entries()].sort(([a], [b]) => a - b).map(([t, rs]) => {
+    const pm = nn(rs.map((r) => r.pm25));
+    return {
+      t, n: pm.length,
+      pm25Mean: avg(pm), pm25Max: pm.length ? Math.max(...pm) : null,
+      h24: avg(nn(rs.map((r) => r.aqi))), hourly: avg(nn(rs.map((r) => r.aqiNow))),
+      extMax: nn(rs.map((r) => r.aqiExt)).reduce<number | null>((m, v) => (m === null || v > m ? v : m), null),
+    };
+  });
+}
+
+export interface DiwaliNight {
+  baselineMean: number; eventMean: number; changePct: number; peakCityMean: number; peakCityT: number;
+  peakStation: number; baselineDays: number; skippedDays: string[]; eventHours: number; minStations: number;
+}
+
+/**
+ * Raw hourly PM2.5 on Diwali night (18:00 to 12:00 IST) vs the SAME clock hours on the 7 days before.
+ * Mirrors analysis.diwali_night_benchmark in Python: >= 5 stations per city hour, >= 12 valid hours per window.
+ * Returns null until the festival night is collected. Descriptive only: weather also changes night to night.
+ */
+export function diwaliNight(stations: Station[], eventDay = '2026-11-08'): DiwaliNight | null {
+  const byT = new Map<number, number[]>();
+  for (const s of stations) for (const r of s.readings) if (r.pm25 !== null) {
+    if (!byT.has(r.t)) byT.set(r.t, []);
+    byT.get(r.t)!.push(r.pm25);
+  }
+  const minStations = Math.min(5, Math.max(1, Math.floor(stations.length / 2)));
+  const HOUR = 3600 * 1000;
+  const win = (day: string) => {
+    const start = Date.parse(`${day}T18:00:00+05:30`);
+    return [...byT.entries()].filter(([t, v]) => t >= start && t < start + 18 * HOUR && v.length >= minStations)
+      .map(([t, v]) => ({ t, mean: v.reduce((a, b) => a + b, 0) / v.length, max: Math.max(...v), n: v.length }));
+  };
+  const ev = win(eventDay);
+  if (ev.length < 12) return null;
+  const base: number[] = [];
+  const skippedDays: string[] = [];
+  for (let k = 1; k <= 7; k++) {
+    const day = new Date(Date.parse(`${eventDay}T00:00:00Z`) - k * 86400000).toISOString().slice(0, 10);
+    const w = win(day);
+    if (w.length >= 12) base.push(w.reduce((a, x) => a + x.mean, 0) / w.length); else skippedDays.push(day);
+  }
+  if (base.length < 4) return null;
+  const b = base.reduce((a, x) => a + x, 0) / base.length;
+  const e = ev.reduce((a, x) => a + x.mean, 0) / ev.length;
+  const peak = ev.reduce((m, x) => (x.mean > m.mean ? x : m));
+  return {
+    baselineMean: b, eventMean: e, changePct: ((e - b) / b) * 100, peakCityMean: peak.mean, peakCityT: peak.t,
+    peakStation: Math.max(...ev.map((x) => x.max)), baselineDays: base.length, skippedDays,
+    eventHours: ev.length, minStations: Math.min(...ev.map((x) => x.n)),
+  };
 }
 
 export interface DailyPoint { date: string; aqi: number; n: number; hours: number }

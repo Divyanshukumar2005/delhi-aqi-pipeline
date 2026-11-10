@@ -1,6 +1,7 @@
 import { ShieldAlert } from 'lucide-react';
 import { Dial } from '../components/Dial';
 import { CityTrend } from '../components/charts';
+import { PeakLens } from '../components/PeakLens';
 import { CatBadge, Section, Stat } from '../components/ui';
 import { soft } from '../lib/aqi';
 import { fmtHour } from '../lib/time';
@@ -58,6 +59,8 @@ export function Overview({ m, onArea }: { m: Model; onArea: (a: AreaFilter) => v
       <Section title="The last two weeks" hint="Hourly city-wide AQI. Shaded bands mark the CPCB categories, from Good at the bottom to Severe at the top.">
         <CityTrend data={m.ticks} height={280} />
       </Section>
+
+      <PeakLens lens={m.lens} />
     </div>
   );
 }

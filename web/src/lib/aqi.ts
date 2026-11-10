@@ -103,3 +103,19 @@ export const POLLUTANTS: Record<Pollutant, { label: string; short: string; limit
   no2: { label: 'NO2', short: 'NO2', limit: 80, limitNote: 'CPCB 24-hour standard' },
   o3: { label: 'O3', short: 'O3', limit: 100, limitNote: 'CPCB 8-hour standard' },
 };
+
+/**
+ * Extended sub-index (not a CPCB value): above the top CPCB band it keeps the Severe band's slope instead of stopping at 500.
+ * Private platforms show numbers like this, which is why their peaks are far above CPCB's.
+ */
+export function subIndexExt(conc: number | null, p: 'pm25' | 'pm10'): number | null {
+  if (conc === null || Number.isNaN(conc) || conc < 0) return null;
+  const [cLo, cHi, iLo, iHi] = BREAKPOINTS[p][BREAKPOINTS[p].length - 1];
+  if (conc <= cHi) return subIndex(conc, p);
+  return iHi + ((iHi - iLo) / (cHi - cLo)) * (conc - cHi);
+}
+
+export function calculateAqiExt(pm25: number | null, pm10: number | null): number | null {
+  const vals = [subIndexExt(pm25, 'pm25'), subIndexExt(pm10, 'pm10')].filter((v): v is number => v !== null);
+  return vals.length ? Math.round(Math.max(...vals)) : null;
+}

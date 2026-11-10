@@ -143,3 +143,9 @@ DIWALI_DATE: date = date(2026, 11, 8)   # Lakshmi Puja day, Sunday 8 Nov 2026 (v
 DIWALI_WINDOW_DAYS: int = 7
 MIN_DAYS_PER_DIWALI_SIDE: int = 4       # need >= 4 of 7 days on each side to compare
 SIGNIFICANCE_LEVEL: float = 0.05
+
+# Diwali-night benchmark: raw hourly PM2.5, festival night vs the SAME clock hours on the 7 days before.
+DIWALI_NIGHT_START_HOUR: int = 18       # window opens 18:00 IST on Diwali day ...
+DIWALI_NIGHT_HOURS: int = 18            # ... and runs 18 h, i.e. until 12:00 the next day
+MIN_STATIONS_FOR_CITY_HOUR: int = 5     # a "city" hour needs >= 5 stations, so one sensor cannot pose as the city
+MIN_HOURS_IN_NIGHT_WINDOW: int = 12     # a window with fewer valid city hours is skipped (data gap)

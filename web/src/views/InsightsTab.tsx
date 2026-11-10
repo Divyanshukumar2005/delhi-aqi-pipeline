@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Download } from 'lucide-react';
 import { CatBadge, Section } from '../components/ui';
+import { diwaliNight } from '../lib/data';
 import { welch } from '../lib/stats';
 import { daysUntil, fmtDay, fmtHour, fmtShort } from '../lib/time';
 import { categoryOf } from '../lib/aqi';
@@ -17,6 +18,7 @@ export function InsightsTab({ m, onCsv }: { m: Model; onCsv: () => void }) {
 
   const rows = useMemo(() => m.stations.flatMap((s) => s.readings.map((r) => ({ s, r }))).sort((a, b) => b.r.t - a.r.t).slice(0, 15), [m.stations]);
   const toDiwali = daysUntil(DIWALI);
+  const night = useMemo(() => diwaliNight(m.stations, DIWALI), [m.stations]);
   const spread = m.worst && m.cleanest ? m.worst.latest!.aqi! - m.cleanest.latest!.aqi! : null;
 
   return (
@@ -57,14 +59,28 @@ export function InsightsTab({ m, onCsv }: { m: Model; onCsv: () => void }) {
           ) : <p className="text-sm muted">Not enough days yet: the test needs at least two weekdays and two weekend days with 12 or more hours of data each.</p>}
         </Section>
 
-        <Section title="Diwali benchmark">
-          <div className="flex items-baseline gap-3">
-            <span className="num text-4xl font-semibold">{toDiwali > 0 ? toDiwali : '–'}</span>
-            <span className="text-sm subtle">{toDiwali > 0 ? `days until Diwali on ${fmtDay(DIWALI)}` : toDiwali === 0 ? 'Diwali is today' : 'Diwali has passed'}</span>
-          </div>
-          <p className="mt-2 text-[14px] subtle">
-            Once readings from the week around the festival are in, this panel will compare the seven days before with the seven days after. There is not enough data yet.
-          </p>
+        <Section title="Diwali night benchmark" hint="Raw hourly PM2.5, 8 Nov 18:00 to 9 Nov 12:00 IST, against the same hours on the 7 days before.">
+          {night ? (
+            <>
+              <div className="flex items-baseline gap-3">
+                <span className="num text-4xl font-semibold">{night.changePct >= 0 ? '+' : ''}{Math.round(night.changePct)}%</span>
+                <span className="text-sm subtle">{Math.round(night.baselineMean)} to {Math.round(night.eventMean)} µg/m³ (city mean)</span>
+              </div>
+              <p className="mt-2 text-[14px] leading-relaxed subtle">
+                The worst hour reached a city mean of <b className="num">{Math.round(night.peakCityMean)}</b> µg/m³ and the worst single station <b className="num">{Math.round(night.peakStation)}</b> µg/m³.
+                The baseline uses {night.baselineDays} nights{night.skippedDays.length ? ` (${night.skippedDays.map(fmtDay).join(', ')} skipped for missing data)` : ''}.
+                Only {night.minStations} stations reported in the thinnest hour. Descriptive only: wind and weather also change from night to night.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-baseline gap-3">
+                <span className="num text-4xl font-semibold">{toDiwali > 0 ? toDiwali : '–'}</span>
+                <span className="text-sm subtle">{toDiwali > 0 ? `days until Diwali on ${fmtDay(DIWALI)}` : toDiwali === 0 ? 'Diwali is today' : 'Diwali has passed'}</span>
+              </div>
+              <p className="mt-2 text-[14px] subtle">The comparison appears once the festival night and at least four earlier nights have enough readings.</p>
+            </>
+          )}
         </Section>
       </div>
 

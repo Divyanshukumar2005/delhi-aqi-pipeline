@@ -537,9 +537,11 @@ st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 # -----------------------------------------------------------------------------
 # Navigation Tabs
 # -----------------------------------------------------------------------------
-tab_hero, tab_map_rank, tab_patterns, tab_trends, tab_station, tab_compare, tab_forecast, tab_insights = st.tabs(
+(tab_hero, tab_peak, tab_map_rank, tab_patterns, tab_trends, tab_station, tab_compare, tab_forecast,
+ tab_insights) = st.tabs(
     [
         "Basin Overview",
+        "Peak & Live Lens",
         "Map & Rankings",
         "Heatmap & Diurnal",
         "Trend & Pollutants",
@@ -1119,6 +1121,18 @@ with tab_insights:
         f"Lowest sustained pollution: <strong>{extremes['least']}</strong> (Mean AQI {extremes['least_aqi']:.0f})",
     )
 
+    night_res = analysis.diwali_night_benchmark(df_all[df_all["label"].isin(selected_labels)])
+    render_card(
+        f"Diwali Night Benchmark ({config.DIWALI_DATE:%d %b} 18:00 to next day 12:00 vs the same hours in the 7 days before)",
+        "Not enough data yet: the festival night has to be fully collected first."
+        if night_res is None
+        else f"Raw hourly PM2.5 (city mean) averaged <strong>{night_res['event_mean']:.0f} µg/m³</strong> on Diwali night against "
+        f"<strong>{night_res['baseline_mean']:.0f} µg/m³</strong> in the same hours of the previous days "
+        f"({night_res['change_pct']:+.0f}%, {night_res['baseline_days']} baseline nights). The worst single hour reached a "
+        f"city mean of {night_res['peak_city_mean']:.0f} µg/m³ and the worst station {night_res['peak_station']:.0f} µg/m³. "
+        f"Only {night_res['min_stations_event']} stations reported in the thinnest hour. "
+        "Descriptive only: wind and weather also change from night to night.",
+    )
     diwali_res = analysis.diwali_comparison(df_all[df_all["label"].isin(selected_labels)])
     render_card(
         f"Diwali Impact Analysis ({config.DIWALI_DATE:%d %b %Y}: 7 Days Before vs After)",
@@ -1185,6 +1199,64 @@ with tab_insights:
 
     st.dataframe(export_df.head(250), width="stretch", hide_index=True)
 
+
+# =============================================================================
+# TAB: PEAK & LIVE LENS (what the 24-h CPCB AQI smooths away)
+# =============================================================================
+with tab_peak:
+    st.markdown(
+        f"<h3 style='color: {TEXT_PRIMARY}; font-size: 1.15rem; font-weight: 700;'>⚡ Peak & Live Lens</h3>",
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "The CPCB AQI uses 24-hour averages and stops at 500, so a short, extreme spike barely moves it. "
+        "This tab shows the same data hour by hour, with raw PM2.5 and station coverage."
+    )
+    lens_hours = st.slider("Window (hours)", 24, 168, 72, step=24, key="lens_hours")
+    lens = analysis.peak_lens(df, hours=lens_hours)
+    peak = analysis.peak_summary(lens)
+    if peak is None:
+        st.info("Not enough PM2.5 data in this window.")
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Peak PM2.5 (one station)", f"{peak['pm25_max']:.0f} µg/m³", peak["ts"].strftime("%d %b, %H:%M"))
+        c2.metric("CPCB AQI (24h avg), city mean", "–" if peak["aqi_24h"] is None else f"{peak['aqi_24h']:.0f}",
+                  help="CPCB method: 24-hour average, capped at 500.")
+        c3.metric("Hourly AQI, city mean", "–" if peak["aqi_hourly"] is None else f"{peak['aqi_hourly']:.0f}",
+                  help="Same CPCB formula on 1-hour values, capped at 500.")
+        c4.metric("Uncapped AQI, worst station", "–" if peak["aqi_ext_max"] is None else f"{peak['aqi_ext_max']:.0f}",
+                  help="Continues the CPCB Severe-band slope past 500 (CPCB itself stops at 500). Use it to compare spike size, not as a CPCB category.")
+        st.warning(
+            f"Coverage at the peak hour: **{peak['stations_at_peak']}** stations reported PM2.5 "
+            f"(typical hour: {peak['stations_typical']}, lowest hour: {peak['stations_min']}). "
+            "Stations without 16 valid hours in a day get no CPCB AQI, so the worst-hit sites can be missing "
+            "from the city number."
+        )
+        fig_lens = go.Figure()
+        fig_lens.add_trace(go.Bar(x=lens.index, y=lens["stations_pm25"], name="Stations reporting PM2.5",
+                                  marker_color="#CBD5E1", yaxis="y2", opacity=0.6))
+        fig_lens.add_trace(go.Scatter(x=lens.index, y=lens["pm25_max"], name="PM2.5 max (µg/m³)",
+                                      line=dict(color="#C00000", width=2)))
+        fig_lens.add_trace(go.Scatter(x=lens.index, y=lens["aqi_hourly"], name="Hourly AQI (city mean)",
+                                      line=dict(color="#FF9900", width=2)))
+        fig_lens.add_trace(go.Scatter(x=lens.index, y=lens["aqi_24h"], name="CPCB AQI (24h avg), city mean",
+                                      line=dict(color="#1E3A8A", width=3)))
+        fig_lens.add_trace(go.Scatter(x=lens.index, y=lens["aqi_ext_max"], name="Uncapped AQI, max",
+                                      line=dict(color="#7C3AED", width=2, dash="dot")))
+        fig_lens.add_hline(y=config.AQI_MAX, line_dash="dash", line_color="#64748B",
+                           annotation_text="CPCB AQI cap (500)", annotation_position="top left")
+        fig_lens.update_layout(
+            height=460, template="plotly_white", hovermode="x unified",
+            yaxis=dict(title="PM2.5 / AQI"),
+            yaxis2=dict(title="Stations", overlaying="y", side="right", showgrid=False, rangemode="tozero"),
+            legend=dict(orientation="h", y=-0.2),
+            margin=dict(l=10, r=10, t=20, b=10),
+        )
+        st.plotly_chart(fig_lens, width="stretch")
+        with st.expander("Hour-by-hour table (worst hours first)"):
+            worst = lens.sort_values("pm25_max", ascending=False).head(24).round(0)
+            st.dataframe(worst, width="stretch")
+
 # -----------------------------------------------------------------------------
 # Footer
 # -----------------------------------------------------------------------------
@@ -1193,7 +1265,7 @@ st.markdown(
     f"""
     <div style="font-size: 0.82rem; color: {TEXT_MUTED}; line-height: 1.6; text-align: center;">
         <strong>CPCB National Air Quality Index (NAQI 2014)</strong>: 24-hour rolling averages of PM2.5 and PM10 with ≥16 valid hours.
-        AQI is the maximum sub-index capped at 500.<br/>
+        AQI is the maximum sub-index capped at 500 (the Peak &amp; Live Lens tab also shows an uncapped version, labelled as such).<br/>
         Primary Data: OpenAQ v3 API. Model Fallback: Copernicus Atmosphere Monitoring Service (CAMS) via Open-Meteo.
     </div>
     """,

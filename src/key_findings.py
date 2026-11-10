@@ -51,6 +51,7 @@ def compute(df: pd.DataFrame) -> dict:
         "pm25_peak": (int(pm25_hourly.idxmax()), pm25_hourly.max()), "pm25_low": (int(pm25_hourly.idxmin()), pm25_hourly.min()),
         "weekday_test": analysis.weekday_weekend_test(df), "pm25_no2": analysis.pm25_no2_correlation(df),
         "diwali": analysis.diwali_comparison(df),
+        "diwali_night": analysis.diwali_night_benchmark(df),
     }
 
 
@@ -77,7 +78,11 @@ def main() -> None:
     if c:
         print(f"PM2.5 vs NO2: r = {c['r']:.2f} (n = {c['n']})")
     dw = k["diwali"]
-    print("Diwali benchmark:", "not enough data yet" if not dw else f"{dw['before']:.0f} before, {dw['after']:.0f} after ({dw['change_pct']:+.0f}%)")
+    dn = k["diwali_night"]
+    print("Diwali night (raw PM2.5):", "not enough data yet" if not dn else
+          f"{dn['baseline_mean']:.0f} baseline -> {dn['event_mean']:.0f} µg/m³ ({dn['change_pct']:+.0f}%), "
+          f"city-hour peak {dn['peak_city_mean']:.0f}, worst station {dn['peak_station']:.0f}")
+    print("Diwali 7-day benchmark:", "not enough data yet" if not dw else f"{dw['before']:.0f} before, {dw['after']:.0f} after ({dw['change_pct']:+.0f}%)")
 
 
 if __name__ == "__main__":

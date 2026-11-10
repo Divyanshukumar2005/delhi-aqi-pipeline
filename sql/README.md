@@ -30,7 +30,7 @@ The queries build on four TEMP views (in memory only, never saved to the databas
 | `v_roll` | Rolling 24-hour PM2.5 and PM10 means (a mean needs at least 16 valid hours, as CPCB requires) |
 | `v_aqi` | CPCB sub-indices, the overall AQI (the larger sub-index, rounded half up, capped at 500) and its category |
 
-**The AQI maths is re-implemented in SQL, and checked against the Python version.** `tests/test_sql.py` compares the two row by row, and on the real database 50,108 of 50,121 values are identical; the other 13 differ by 1 point because of floating-point rounding, and none changes a category. The rolling window uses `RANGE BETWEEN 23 PRECEDING AND CURRENT ROW` over an absolute hour number, so a missing hour shortens the window instead of silently pulling in older data.
+**The AQI maths is re-implemented in SQL, and checked against the Python version.** `tests/test_sql.py` compares the two row by row, and on the real database 54,110 of 54,123 values are identical; the other 13 differ by 1 point because of floating-point rounding, and none changes a category. The rolling window uses `RANGE BETWEEN 23 PRECEDING AND CURRENT ROW` over an absolute hour number, so a missing hour shortens the window instead of silently pulling in older data.
 
 ## The queries
 
@@ -50,7 +50,7 @@ The queries build on four TEMP views (in memory only, never saved to the databas
 | 12 | `12_pm25_standard_exceedance.sql` | How many days breach the 60 µg/m³ standard? | Two-level CTE, `RANK()` |
 | 13 | `13_time_of_day_by_area.sql` | Does every sub-region peak at the same time? | Pivot with conditional aggregation |
 | 14 | `14_weekday_vs_weekend.sql` | Is pollution different on weekends? | `strftime('%w')`, `GROUP BY` |
-| 15 | `15_diwali_benchmark.sql` | How does air quality change around Diwali? | Parameter CTE, date arithmetic |
+| 15 | `15_diwali_benchmark.sql` | How much higher was PM2.5 on Diwali night than at the same hours before? | Parameter CTE, two-level aggregation, coverage filters |
 
 ## Results
 
